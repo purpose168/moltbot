@@ -11,7 +11,7 @@ struct VoiceWakeWordsSettingsView: View {
         Form {
             Section {
                 ForEach(self.triggerWords.indices, id: \.self) { index in
-                    TextField("Wake word", text: self.binding(for: index))
+                    TextField("唤醒词", text: self.binding(for: index))
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .focused(self.$focusedTriggerIndex, equals: index)
@@ -24,23 +24,23 @@ struct VoiceWakeWordsSettingsView: View {
                 Button {
                     self.addWord()
                 } label: {
-                    Label("Add word", systemImage: "plus")
+                    Label("添加词", systemImage: "plus")
                 }
                 .disabled(self.triggerWords
                     .contains(where: { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }))
 
-                Button("Reset defaults") {
+                Button("重置默认值") {
                     self.triggerWords = VoiceWakePreferences.defaultTriggerWords
                 }
             } header: {
-                Text("Wake Words")
+                Text("唤醒词")
             } footer: {
                 Text(
-                    "Moltbot reacts when any trigger appears in a transcription. "
-                        + "Keep them short to avoid false positives.")
+                    "当任何触发词出现在转录中时，Moltbot 会做出反应。 "
+                        + "保持简短以避免误报。")
             }
         }
-        .navigationTitle("Wake Words")
+        .navigationTitle("唤醒词")
         .toolbar { EditButton() }
         .onAppear {
             if self.triggerWords.isEmpty {

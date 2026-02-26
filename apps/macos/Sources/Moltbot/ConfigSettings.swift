@@ -1,14 +1,25 @@
 import SwiftUI
 
+/// 配置设置视图
+/// 
+/// 用于显示和编辑应用程序配置的SwiftUI视图
 @MainActor
 struct ConfigSettings: View {
+    /// 是否为预览模式
     private let isPreview = ProcessInfo.processInfo.isPreview
+    /// 是否为Nix模式
     private let isNixMode = ProcessInfo.processInfo.isNixMode
+    /// 通道存储
     @Bindable var store: ChannelsStore
+    /// 是否已加载配置
     @State private var hasLoaded = false
+    /// 当前激活的节段键
     @State private var activeSectionKey: String?
+    /// 当前激活的子节段
     @State private var activeSubsection: SubsectionSelection?
 
+    /// 初始化配置设置视图
+    /// - Parameter store: 通道存储，默认为共享实例
     init(store: ChannelsStore = .shared) {
         self.store = store
     }
@@ -34,39 +45,58 @@ struct ConfigSettings: View {
 }
 
 extension ConfigSettings {
+    /// 子节段选择枚举
     private enum SubsectionSelection: Hashable {
+        /// 全部
         case all
+        /// 特定键
         case key(String)
     }
 
+    /// 配置节段
     private struct ConfigSection: Identifiable {
+        /// 键
         let key: String
+        /// 标签
         let label: String
+        /// 帮助文本
         let help: String?
+        /// 模式节点
         let node: ConfigSchemaNode
 
+        /// 标识符
         var id: String { self.key }
     }
 
+    /// 配置子节段
     private struct ConfigSubsection: Identifiable {
+        /// 键
         let key: String
+        /// 标签
         let label: String
+        /// 帮助文本
         let help: String?
+        /// 模式节点
         let node: ConfigSchemaNode
+        /// 配置路径
         let path: ConfigPath
 
+        /// 标识符
         var id: String { self.key }
     }
 
+    /// 节段列表
     private var sections: [ConfigSection] {
         guard let schema = self.store.configSchema else { return [] }
         return self.resolveSections(schema)
     }
 
+    /// 当前激活的节段
     private var activeSection: ConfigSection? {
         self.sections.first { $0.key == self.activeSectionKey }
     }
 
+    /// 侧边栏视图
     private var sidebar: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 8) {
@@ -92,6 +122,7 @@ extension ConfigSettings {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
+    /// 详情视图
     private var detail: some View {
         VStack(alignment: .leading, spacing: 16) {
             if self.store.configSchemaLoading {
@@ -109,6 +140,7 @@ extension ConfigSettings {
         .frame(minWidth: 460, maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
+    /// 空详情视图
     private var emptyDetail: some View {
         VStack(alignment: .leading, spacing: 8) {
             self.header
@@ -120,6 +152,9 @@ extension ConfigSettings {
         .padding(.vertical, 18)
     }
 
+    /// 节段详情视图
+    /// - Parameter section: 配置节段
+    /// - Returns: 节段详情视图
     private func sectionDetail(_ section: ConfigSection) -> some View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 16) {
@@ -147,6 +182,7 @@ extension ConfigSettings {
         }
     }
 
+    /// 头部视图
     @ViewBuilder
     private var header: some View {
         Text("Config")
@@ -158,6 +194,9 @@ extension ConfigSettings {
             .foregroundStyle(.secondary)
     }
 
+    /// 节段头部视图
+    /// - Parameter section: 配置节段
+    /// - Returns: 节段头部视图
     private func sectionHeader(_ section: ConfigSection) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(section.label)
@@ -170,6 +209,7 @@ extension ConfigSettings {
         }
     }
 
+    /// 操作行视图
     private var actionRow: some View {
         HStack(spacing: 10) {
             Button("Reload") {
@@ -185,6 +225,9 @@ extension ConfigSettings {
         .buttonStyle(.bordered)
     }
 
+    /// 侧边栏行视图
+    /// - Parameter section: 配置节段
+    /// - Returns: 侧边栏行视图
     private func sidebarRow(_ section: ConfigSection) -> some View {
         let isSelected = self.activeSectionKey == section.key
         return Button {
@@ -212,6 +255,9 @@ extension ConfigSettings {
         .contentShape(Rectangle())
     }
 
+    /// 子节段导航视图
+    /// - Parameter section: 配置节段
+    /// - Returns: 子节段导航视图
     @ViewBuilder
     private func subsectionNav(_ section: ConfigSection) -> some View {
         let subsections = self.resolveSubsections(for: section)
@@ -226,12 +272,12 @@ extension ConfigSettings {
                     {
                         self.activeSubsection = .all
                     }
-                    ForEach(subsections) { subsection in
+                    ForEach(subsections) {
                         self.subsectionButton(
-                            title: subsection.label,
-                            isSelected: self.activeSubsection == .key(subsection.key))
+                            title: $0.label,
+                            isSelected: self.activeSubsection == .key($0.key))
                         {
-                            self.activeSubsection = .key(subsection.key)
+                            self.activeSubsection = .key($0.key)
                         }
                     }
                 }
@@ -240,6 +286,12 @@ extension ConfigSettings {
         }
     }
 
+    /// 子节段按钮
+    /// - Parameters:
+    ///   - title: 按钮标题
+    ///   - isSelected: 是否被选中
+    ///   - action: 点击回调
+    /// - Returns: 子节段按钮视图
     private func subsectionButton(
         title: String,
         isSelected: Bool,
@@ -257,6 +309,9 @@ extension ConfigSettings {
         .buttonStyle(.plain)
     }
 
+    /// 节段表单视图
+    /// - Parameter section: 配置节段
+    /// - Returns: 节段表单视图
     private func sectionForm(_ section: ConfigSection) -> some View {
         let subsection = self.activeSubsection
         let defaultPath: ConfigPath = [.key(section.key)]
@@ -274,6 +329,7 @@ extension ConfigSettings {
             .disabled(self.isNixMode)
     }
 
+    /// 确保选择
     private func ensureSelection() {
         guard let schema = self.store.configSchema else { return }
         let sections = self.resolveSections(schema)
@@ -286,6 +342,8 @@ extension ConfigSettings {
         self.ensureSubsection(for: active)
     }
 
+    /// 确保子节段选择
+    /// - Parameter section: 配置节段
     private func ensureSubsection(for section: ConfigSection) {
         let subsections = self.resolveSubsections(for: section)
         guard !subsections.isEmpty else {
@@ -307,6 +365,8 @@ extension ConfigSettings {
         }
     }
 
+    /// 选择节段
+    /// - Parameter section: 配置节段
     private func selectSection(_ section: ConfigSection) {
         guard self.activeSectionKey != section.key else { return }
         self.activeSectionKey = section.key
@@ -318,6 +378,9 @@ extension ConfigSettings {
         }
     }
 
+    /// 解析节段
+    /// - Parameter root: 根配置模式节点
+    /// - Returns: 配置节段列表
     private func resolveSections(_ root: ConfigSchemaNode) -> [ConfigSection] {
         let node = self.resolvedSchemaNode(root)
         let hints = self.store.configUiHints
@@ -340,6 +403,9 @@ extension ConfigSettings {
         }
     }
 
+    /// 解析子节段
+    /// - Parameter section: 配置节段
+    /// - Returns: 配置子节段列表
     private func resolveSubsections(for section: ConfigSection) -> [ConfigSubsection] {
         let node = self.resolvedSchemaNode(section.node)
         guard node.schemaType == "object" else { return [] }
@@ -368,6 +434,9 @@ extension ConfigSettings {
         }
     }
 
+    /// 解析模式节点
+    /// - Parameter node: 配置模式节点
+    /// - Returns: 解析后的配置模式节点
     private func resolvedSchemaNode(_ node: ConfigSchemaNode) -> ConfigSchemaNode {
         let variants = node.anyOf.isEmpty ? node.oneOf : node.anyOf
         if !variants.isEmpty {
@@ -377,6 +446,9 @@ extension ConfigSettings {
         return node
     }
 
+    /// 人性化键名
+    /// - Parameter key: 原始键名
+    /// - Returns: 人性化后的键名
     private func humanize(_ key: String) -> String {
         key.replacingOccurrences(of: "_", with: " ")
             .replacingOccurrences(of: "-", with: " ")
@@ -384,6 +456,7 @@ extension ConfigSettings {
     }
 }
 
+/// 配置设置预览
 struct ConfigSettings_Previews: PreviewProvider {
     static var previews: some View {
         ConfigSettings()

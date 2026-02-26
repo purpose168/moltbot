@@ -1,30 +1,30 @@
-# fastlane setup (Moltbot iOS)
+# fastlane 配置 (Moltbot iOS)
 
-Install:
+安装：
 
 ```bash
 brew install fastlane
 ```
 
-Create an App Store Connect API key:
+创建 App Store Connect API 密钥：
 
-- App Store Connect → Users and Access → Keys → App Store Connect API → Generate API Key
-- Download the `.p8`, note the **Issuer ID** and **Key ID**
+- App Store Connect → 用户和访问权限 → 密钥 → App Store Connect API → 生成 API 密钥
+- 下载 `.p8` 文件，记录下 **Issuer ID** 和 **Key ID**
 
-Create `apps/ios/fastlane/.env` (gitignored):
+创建 `apps/ios/fastlane/.env` 文件（已被 git 忽略）：
 
 ```bash
 ASC_KEY_ID=YOUR_KEY_ID
 ASC_ISSUER_ID=YOUR_ISSUER_ID
 ASC_KEY_PATH=/absolute/path/to/AuthKey_XXXXXXXXXX.p8
 
-# Code signing (Apple Team ID / App ID Prefix)
+# 代码签名（Apple 团队 ID / App ID 前缀）
 IOS_DEVELOPMENT_TEAM=YOUR_TEAM_ID
 ```
 
-Tip: run `scripts/ios-team-id.sh` from the repo root to print a Team ID to paste into `.env`. Fastlane falls back to this helper if `IOS_DEVELOPMENT_TEAM` is missing.
+提示：从仓库根目录运行 `scripts/ios-team-id.sh` 可以打印出团队 ID，以便粘贴到 `.env` 文件中。如果缺少 `IOS_DEVELOPMENT_TEAM`，Fastlane 会使用这个辅助脚本。
 
-Run:
+运行：
 
 ```bash
 cd apps/ios

@@ -147,10 +147,11 @@ class NodeRuntime(context: Context) {
   private var lastAutoA2uiUrl: String? = null
   private var operatorConnected = false
   private var nodeConnected = false
-  private var operatorStatusText: String = "Offline"
-  private var nodeStatusText: String = "Offline"
+  private var operatorStatusText: String = "离线" // Offline
+  private var nodeStatusText: String = "离线" // Offline
   private var connectedEndpoint: GatewayEndpoint? = null
 
+  // 操作员会话 - 处理与操作员网关的连接
   private val operatorSession =
     GatewaySession(
       scope = scope,
@@ -158,7 +159,7 @@ class NodeRuntime(context: Context) {
       deviceAuthStore = deviceAuthStore,
       onConnected = { name, remote, mainSessionKey ->
         operatorConnected = true
-        operatorStatusText = "Connected"
+        operatorStatusText = "已连接" // Connected
         _serverName.value = name
         _remoteAddress.value = remote
         _seamColorArgb.value = DEFAULT_SEAM_COLOR_ARGB
@@ -187,6 +188,7 @@ class NodeRuntime(context: Context) {
       },
     )
 
+  // 节点会话 - 处理与节点网关的连接
   private val nodeSession =
     GatewaySession(
       scope = scope,
@@ -194,7 +196,7 @@ class NodeRuntime(context: Context) {
       deviceAuthStore = deviceAuthStore,
       onConnected = { _, _, _ ->
         nodeConnected = true
-        nodeStatusText = "Connected"
+        nodeStatusText = "已连接" // Connected
         updateStatus()
         maybeNavigateToA2uiOnConnect()
       },
@@ -244,9 +246,9 @@ class NodeRuntime(context: Context) {
     _isConnected.value = operatorConnected
     _statusText.value =
       when {
-        operatorConnected && nodeConnected -> "Connected"
-        operatorConnected && !nodeConnected -> "Connected (node offline)"
-        !operatorConnected && nodeConnected -> "Connected (operator offline)"
+        operatorConnected && nodeConnected -> "已连接" // Connected
+        operatorConnected && !nodeConnected -> "已连接(节点离线)" // Connected (node offline)
+        !operatorConnected && nodeConnected -> "已连接(操作员离线)" // Connected (operator offline)
         operatorStatusText.isNotBlank() && operatorStatusText != "Offline" -> operatorStatusText
         else -> nodeStatusText
       }
@@ -266,6 +268,7 @@ class NodeRuntime(context: Context) {
     }
   }
 
+  // 断开连接时显示本地画布
   private fun showLocalCanvasOnDisconnect() {
     lastAutoA2uiUrl = null
     canvas.navigate("")
@@ -323,12 +326,12 @@ class NodeRuntime(context: Context) {
             } && !externalAudio
 
           if (!shouldListen) {
-            voiceWake.stop(statusText = if (mode == VoiceWakeMode.Off) "Off" else "Paused")
+            voiceWake.stop(statusText = if (mode == VoiceWakeMode.Off) "已关闭" else "已暂停") // Off / Paused
             return@collect
           }
 
           if (!hasRecordAudioPermission()) {
-            voiceWake.stop(statusText = "Microphone permission required")
+            voiceWake.stop(statusText = "需要麦克风权限") // Microphone permission required
             return@collect
           }
 
@@ -346,7 +349,7 @@ class NodeRuntime(context: Context) {
     scope.launch(Dispatchers.Default) {
       gateways.collect { list ->
         if (list.isNotEmpty()) {
-          // Persist the last discovered gateway (best-effort UX parity with iOS).
+          // 持久化最后发现的网关(与 iOS 的最佳用户体验一致性)
           prefs.setLastDiscoveredStableId(list.last().stableId)
         }
 
@@ -601,7 +604,7 @@ class NodeRuntime(context: Context) {
     val host = manualHost.value.trim()
     val port = manualPort.value
     if (host.isEmpty() || port <= 0 || port > 65535) {
-      _statusText.value = "Failed: invalid manual host/port"
+      _statusText.value = "失败:无效的手动主机/端口" // Failed: invalid manual host/port
       return
     }
     connect(GatewayEndpoint.manual(host = host, port = port))
@@ -835,14 +838,14 @@ class NodeRuntime(context: Context) {
       if (!isForeground.value) {
         return GatewaySession.InvokeResult.error(
           code = "NODE_BACKGROUND_UNAVAILABLE",
-          message = "NODE_BACKGROUND_UNAVAILABLE: canvas/camera/screen commands require foreground",
+          message = "NODE_BACKGROUND_UNAVAILABLE: 画布/相机/屏幕命令需要前台", // canvas/camera/screen commands require foreground
         )
       }
     }
     if (command.startsWith(MoltbotCameraCommand.NamespacePrefix) && !cameraEnabled.value) {
       return GatewaySession.InvokeResult.error(
         code = "CAMERA_DISABLED",
-        message = "CAMERA_DISABLED: enable Camera in Settings",
+        message = "CAMERA_DISABLED: 在设置中启用相机", // enable Camera in Settings
       )
     }
     if (command.startsWith(MoltbotLocationCommand.NamespacePrefix) &&
@@ -850,7 +853,7 @@ class NodeRuntime(context: Context) {
     ) {
       return GatewaySession.InvokeResult.error(
         code = "LOCATION_DISABLED",
-        message = "LOCATION_DISABLED: enable Location in Settings",
+        message = "LOCATION_DISABLED: 在设置中启用位置", // enable Location in Settings
       )
     }
 
@@ -941,7 +944,7 @@ class NodeRuntime(context: Context) {
         GatewaySession.InvokeResult.ok(res)
       }
       MoltbotCameraCommand.Snap.rawValue -> {
-        showCameraHud(message = "Taking photo…", kind = CameraHudKind.Photo)
+        showCameraHud(message = "正在拍照…", kind = CameraHudKind.Photo) // Taking photo…
         triggerCameraFlash()
         val res =
           try {
@@ -1019,15 +1022,15 @@ class NodeRuntime(context: Context) {
         } catch (err: TimeoutCancellationException) {
           GatewaySession.InvokeResult.error(
             code = "LOCATION_TIMEOUT",
-            message = "LOCATION_TIMEOUT: no fix in time",
+            message = "LOCATION_TIMEOUT: 未及时获取定位", // no fix in time
           )
         } catch (err: Throwable) {
-          val message = err.message ?: "LOCATION_UNAVAILABLE: no fix"
+          val message = err.message ?: "LOCATION_UNAVAILABLE: 未获取定位" // no fix
           GatewaySession.InvokeResult.error(code = "LOCATION_UNAVAILABLE", message = message)
         }
       }
       MoltbotScreenCommand.Record.rawValue -> {
-        // Status pill mirrors screen recording state so it stays visible without overlay stacking.
+        // 状态药丸反映屏幕录制状态,因此它保持可见而不会叠加覆盖层
         _screenRecordActive.value = true
         try {
           val res =
@@ -1080,13 +1083,13 @@ class NodeRuntime(context: Context) {
 
   private fun invokeErrorFromThrowable(err: Throwable): Pair<String, String> {
     val raw = (err.message ?: "").trim()
-    if (raw.isEmpty()) return "UNAVAILABLE" to "UNAVAILABLE: camera error"
+    if (raw.isEmpty()) return "UNAVAILABLE" to "UNAVAILABLE: 相机错误" // camera error
 
     val idx = raw.indexOf(':')
     if (idx <= 0) return "UNAVAILABLE" to raw
     val code = raw.substring(0, idx).trim().ifEmpty { "UNAVAILABLE" }
     val message = raw.substring(idx + 1).trim().ifEmpty { raw }
-    // Preserve full string for callers/logging, but keep the returned message human-friendly.
+    // 为调用者/日志保留完整字符串,但保持返回的消息对用户友好
     return code to "$code: $message"
   }
 
@@ -1141,18 +1144,18 @@ class NodeRuntime(context: Context) {
 
   private fun decodeA2uiMessages(command: String, paramsJson: String?): String {
     val raw = paramsJson?.trim().orEmpty()
-    if (raw.isBlank()) throw IllegalArgumentException("INVALID_REQUEST: paramsJSON required")
+    if (raw.isBlank()) throw IllegalArgumentException("INVALID_REQUEST: 需要 paramsJSON") // paramsJSON required
 
     val obj =
       json.parseToJsonElement(raw) as? JsonObject
-        ?: throw IllegalArgumentException("INVALID_REQUEST: expected object params")
+        ?: throw IllegalArgumentException("INVALID_REQUEST: 需要对象参数") // expected object params
 
     val jsonlField = (obj["jsonl"] as? JsonPrimitive)?.content?.trim().orEmpty()
     val hasMessagesArray = obj["messages"] is JsonArray
 
     if (command == MoltbotCanvasA2UICommand.PushJSONL.rawValue || (!hasMessagesArray && jsonlField.isNotBlank())) {
       val jsonl = jsonlField
-      if (jsonl.isBlank()) throw IllegalArgumentException("INVALID_REQUEST: jsonl required")
+      if (jsonl.isBlank()) throw IllegalArgumentException("INVALID_REQUEST: 需要 jsonl") // jsonl required
       val messages =
         jsonl
           .lineSequence()
@@ -1162,7 +1165,7 @@ class NodeRuntime(context: Context) {
             val el = json.parseToJsonElement(line)
             val msg =
               el as? JsonObject
-                ?: throw IllegalArgumentException("A2UI JSONL line ${idx + 1}: expected a JSON object")
+                ?: throw IllegalArgumentException("A2UI JSONL 第 ${idx + 1} 行:期望 JSON 对象") // A2UI JSONL line ...: expected a JSON object
             validateA2uiV0_8(msg, idx + 1)
             msg
           }
@@ -1170,12 +1173,12 @@ class NodeRuntime(context: Context) {
       return JsonArray(messages).toString()
     }
 
-    val arr = obj["messages"] as? JsonArray ?: throw IllegalArgumentException("INVALID_REQUEST: messages[] required")
+    val arr = obj["messages"] as? JsonArray ?: throw IllegalArgumentException("INVALID_REQUEST: 需要 messages[]") // messages[] required
     val out =
       arr.mapIndexed { idx, el ->
         val msg =
           el as? JsonObject
-            ?: throw IllegalArgumentException("A2UI messages[${idx}]: expected a JSON object")
+            ?: throw IllegalArgumentException("A2UI messages[$idx]: 期望 JSON 对象") // A2UI messages[...]: expected a JSON object
         validateA2uiV0_8(msg, idx + 1)
         msg
       }
@@ -1185,7 +1188,7 @@ class NodeRuntime(context: Context) {
   private fun validateA2uiV0_8(msg: JsonObject, lineNumber: Int) {
     if (msg.containsKey("createSurface")) {
       throw IllegalArgumentException(
-        "A2UI JSONL line $lineNumber: looks like A2UI v0.9 (`createSurface`). Canvas supports v0.8 messages only.",
+        "A2UI JSONL 第 $lineNumber 行:看起来像 A2UI v0.9 (`createSurface`)。画布仅支持 v0.8 消息。", // looks like A2UI v0.9 ... Canvas supports v0.8 messages only.
       )
     }
     val allowed = setOf("beginRendering", "surfaceUpdate", "dataModelUpdate", "deleteSurface")
@@ -1193,7 +1196,7 @@ class NodeRuntime(context: Context) {
     if (matched.size != 1) {
       val found = msg.keys.sorted().joinToString(", ")
       throw IllegalArgumentException(
-        "A2UI JSONL line $lineNumber: expected exactly one of ${allowed.sorted().joinToString(", ")}; found: $found",
+        "A2UI JSONL 第 $lineNumber 行:期望恰好一个 ${allowed.sorted().joinToString(", ")};找到: $found", // expected exactly one of ...; found: ...
       )
     }
   }

@@ -46,8 +46,7 @@ final class GatewayProcessManager {
     private var testingConnection: GatewayConnection?
     #endif
     private let logger = Logger(subsystem: "bot.molt", category: "gateway.process")
-
-    private let logLimit = 20000 // characters to keep in-memory
+    private let logLimit = 20000 // 内存中保留的字符数
     private let environmentRefreshMinInterval: TimeInterval = 30
     private var connection: GatewayConnection {
         #if DEBUG
@@ -58,7 +57,7 @@ final class GatewayProcessManager {
     }
 
     func setActive(_ active: Bool) {
-        // Remote mode should never spawn a local gateway; treat as stopped.
+        // 远程模式不应生成本地网关;视为已停止。
         if CommandResolver.connectionModeIsRemote() {
             self.desiredActive = false
             self.stop()
@@ -97,13 +96,13 @@ final class GatewayProcessManager {
 
     func startIfNeeded() {
         guard self.desiredActive else { return }
-        // Do not spawn in remote mode (the gateway should run on the remote host).
+        // 不要在远程模式下生成(网关应在远程主机上运行)。
         guard !CommandResolver.connectionModeIsRemote() else {
             self.status = .stopped
             return
         }
-        // Many surfaces can call `setActive(true)` in quick succession (startup, Canvas, health checks).
-        // Avoid spawning multiple concurrent "start" tasks that can thrash launchd and flap the port.
+        // 多个界面可以快速连续调用 `setActive(true)` (启动、画布、健康检查)。
+        // 避免生成多个并发"启动"任务,可能会破坏 launchd 和导致端口抖动。
         switch self.status {
         case .starting, .running, .attachedExisting:
             return
@@ -312,7 +311,7 @@ final class GatewayProcessManager {
         }
 
         if GatewayLaunchAgentManager.isLaunchAgentWriteDisabled() {
-            let message = "Launchd disabled; start the Gateway manually or disable attach-only."
+            let message = "Launchd 已禁用; 手动启动网关或禁用仅附加。"
             self.status = .failed(message)
             self.lastFailureReason = "launchd disabled"
             self.appendLog("[gateway] launchd disabled; skipping auto-start\n")

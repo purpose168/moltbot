@@ -2,13 +2,20 @@ import MoltbotProtocol
 import Foundation
 import SwiftUI
 
+/// CronJobEditor 扩展
+/// 
+/// 包含 CronJobEditor 的辅助方法
 extension CronJobEditor {
+    /// 创建网格标签
+    /// - Parameter text: 标签文本
+    /// - Returns: 标签视图
     func gridLabel(_ text: String) -> some View {
         Text(text)
             .foregroundStyle(.secondary)
             .frame(width: self.labelColumnWidth, alignment: .leading)
     }
 
+    /// 从作业中加载数据
     func hydrateFromJob() {
         guard let job else { return }
         self.name = job.name
@@ -51,6 +58,7 @@ extension CronJobEditor {
         self.postPrefix = job.isolation?.postToMainPrefix ?? "Cron"
     }
 
+    /// 保存作业
     func save() {
         do {
             self.error = nil
@@ -61,6 +69,9 @@ extension CronJobEditor {
         }
     }
 
+    /// 构建有效载荷
+    /// - Returns: 有效载荷字典
+    /// - Throws: 构建过程中的错误
     func buildPayload() throws -> [String: AnyCodable] {
         let name = try self.requireName()
         let description = self.trimmed(self.description)
@@ -97,21 +108,30 @@ extension CronJobEditor {
         return root.mapValues { AnyCodable($0) }
     }
 
+    /// 修剪字符串
+    /// - Parameter value: 输入字符串
+    /// - Returns: 修剪后的字符串
     func trimmed(_ value: String) -> String {
         value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// 要求名称
+    /// - Returns: 修剪后的名称
+    /// - Throws: 如果名称为空则抛出错误
     func requireName() throws -> String {
         let name = self.trimmed(self.name)
         if name.isEmpty {
             throw NSError(
                 domain: "Cron",
                 code: 0,
-                userInfo: [NSLocalizedDescriptionKey: "Name is required."])
+                userInfo: [NSLocalizedDescriptionKey: "名称是必需的。"])
         }
         return name
     }
 
+    /// 构建调度
+    /// - Returns: 调度字典
+    /// - Throws: 构建过程中的错误
     func buildSchedule() throws -> [String: Any] {
         switch self.scheduleKind {
         case .at:
@@ -121,7 +141,7 @@ extension CronJobEditor {
                 throw NSError(
                     domain: "Cron",
                     code: 0,
-                    userInfo: [NSLocalizedDescriptionKey: "Invalid every duration (use 10m, 1h, 1d)."])
+                    userInfo: [NSLocalizedDescriptionKey: "无效的每隔持续时间（使用 10m, 1h, 1d）。"])
             }
             return ["kind": "every", "everyMs": ms]
         case .cron:
@@ -130,7 +150,7 @@ extension CronJobEditor {
                 throw NSError(
                     domain: "Cron",
                     code: 0,
-                    userInfo: [NSLocalizedDescriptionKey: "Cron expression is required."])
+                    userInfo: [NSLocalizedDescriptionKey: "Cron 表达式是必需的。"])
             }
             let tz = self.trimmed(self.cronTz)
             if tz.isEmpty {
@@ -140,6 +160,9 @@ extension CronJobEditor {
         }
     }
 
+    /// 构建选定的有效载荷
+    /// - Returns: 有效载荷字典
+    /// - Throws: 构建过程中的错误
     func buildSelectedPayload() throws -> [String: Any] {
         if self.sessionTarget == .isolated { return self.buildAgentTurnPayload() }
         switch self.payloadKind {
@@ -151,6 +174,9 @@ extension CronJobEditor {
         }
     }
 
+    /// 验证会话目标
+    /// - Parameter payload: 有效载荷字典
+    /// - Throws: 验证过程中的错误
     func validateSessionTarget(_ payload: [String: Any]) throws {
         if self.sessionTarget == .main, payload["kind"] as? String == "agentTurn" {
             throw NSError(
@@ -158,7 +184,7 @@ extension CronJobEditor {
                 code: 0,
                 userInfo: [
                     NSLocalizedDescriptionKey:
-                        "Main session jobs require systemEvent payloads (switch Session target to isolated).",
+                        "主会话作业需要 systemEvent 有效载荷（将会话目标切换到隔离）。",
                 ])
         }
 
@@ -166,17 +192,20 @@ extension CronJobEditor {
             throw NSError(
                 domain: "Cron",
                 code: 0,
-                userInfo: [NSLocalizedDescriptionKey: "Isolated jobs require agentTurn payloads."])
+                userInfo: [NSLocalizedDescriptionKey: "隔离作业需要 agentTurn 有效载荷。"])
         }
     }
 
+    /// 验证有效载荷必填字段
+    /// - Parameter payload: 有效载荷字典
+    /// - Throws: 验证过程中的错误
     func validatePayloadRequiredFields(_ payload: [String: Any]) throws {
         if payload["kind"] as? String == "systemEvent" {
             if (payload["text"] as? String ?? "").isEmpty {
                 throw NSError(
                     domain: "Cron",
                     code: 0,
-                    userInfo: [NSLocalizedDescriptionKey: "System event text is required."])
+                    userInfo: [NSLocalizedDescriptionKey: "系统事件文本是必需的。"])
             }
         }
         if payload["kind"] as? String == "agentTurn" {
@@ -184,11 +213,16 @@ extension CronJobEditor {
                 throw NSError(
                     domain: "Cron",
                     code: 0,
-                    userInfo: [NSLocalizedDescriptionKey: "Agent message is required."])
+                    userInfo: [NSLocalizedDescriptionKey: "代理消息是必需的。"])
             }
         }
     }
 
+    /// 应用删除后运行设置
+    /// - Parameters:
+    ///   - root: 根字典
+    ///   - scheduleKind: 调度类型，可选
+    ///   - deleteAfterRun: 删除后运行标志，可选
     func applyDeleteAfterRun(
         to root: inout [String: Any],
         scheduleKind: ScheduleKind? = nil,
@@ -203,6 +237,8 @@ extension CronJobEditor {
         }
     }
 
+    /// 构建代理回合有效载荷
+    /// - Returns: 代理回合有效载荷字典
     func buildAgentTurnPayload() -> [String: Any] {
         let msg = self.agentMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         var payload: [String: Any] = ["kind": "agentTurn", "message": msg]
@@ -220,6 +256,9 @@ extension CronJobEditor {
         return payload
     }
 
+    /// 解析持续时间（毫秒）
+    /// - Parameter input: 输入字符串
+    /// - Returns: 毫秒数，或 nil 如果解析失败
     static func parseDurationMs(_ input: String) -> Int? {
         let raw = input.trimmingCharacters(in: .whitespacesAndNewlines)
         if raw.isEmpty { return nil }
@@ -246,6 +285,9 @@ extension CronJobEditor {
         return Int(floor(n * factor))
     }
 
+    /// 格式化持续时间
+    /// - Parameter ms: 毫秒数
+    /// - Returns: 格式化的持续时间字符串
     func formatDuration(ms: Int) -> String {
         if ms < 1000 { return "\(ms)ms" }
         let s = Double(ms) / 1000.0

@@ -1,220 +1,220 @@
-# Changelog
+# 变更日志
 
-Docs: https://docs.molt.bot
+文档：https://docs.molt.bot
 
 ## 2026.1.27-beta.1
-Status: beta.
+状态：beta 版本。
 
-### Changes
-- Rebrand: rename the npm package/CLI to `moltbot`, add a `moltbot` compatibility shim, and move extensions to the `@moltbot/*` scope.
-- Commands: group /help and /commands output with Telegram paging. (#2504) Thanks @hougangdev.
-- macOS: limit project-local `node_modules/.bin` PATH preference to debug builds (reduce PATH hijacking risk).
-- macOS: finish Moltbot app rename for macOS sources, bundle identifiers, and shared kit paths. (#2844) Thanks @fal3.
-- Branding: update launchd labels, mobile bundle IDs, and logging subsystems to bot.molt (legacy com.clawdbot migrations). Thanks @thewilloftheshadow.
-- Tools: add per-sender group tool policies and fix precedence. (#1757) Thanks @adam91holt.
-- Agents: summarize dropped messages during compaction safeguard pruning. (#2509) Thanks @jogi47.
-- Skills: add multi-image input support to Nano Banana Pro skill. (#1958) Thanks @tyler6204.
-- Agents: honor tools.exec.safeBins in exec allowlist checks. (#2281)
-- Matrix: switch plugin SDK to @vector-im/matrix-bot-sdk.
-- Docs: tighten Fly private deployment steps. (#2289) Thanks @dguido.
-- Docs: add migration guide for moving to a new machine. (#2381)
-- Docs: add Northflank one-click deployment guide. (#2167) Thanks @AdeboyeDN.
-- Gateway: warn on hook tokens via query params; document header auth preference. (#2200) Thanks @YuriNachos.
-- Gateway: add dangerous Control UI device auth bypass flag + audit warnings. (#2248)
-- Doctor: warn on gateway exposure without auth. (#2016) Thanks @Alex-Alaniz.
-- Config: auto-migrate legacy state/config paths and keep config resolution consistent across legacy filenames.
-- Discord: add configurable privileged gateway intents for presences/members. (#2266) Thanks @kentaro.
-- Docs: add Vercel AI Gateway to providers sidebar. (#1901) Thanks @jerilynzheng.
-- Agents: expand cron tool description with full schema docs. (#1988) Thanks @tomascupr.
-- Skills: add missing dependency metadata for GitHub, Notion, Slack, Discord. (#1995) Thanks @jackheuberger.
-- Docs: add Render deployment guide. (#1975) Thanks @anurag.
-- Docs: add Claude Max API Proxy guide. (#1875) Thanks @atalovesyou.
-- Docs: add DigitalOcean deployment guide. (#1870) Thanks @0xJonHoldsCrypto.
-- Docs: add Oracle Cloud (OCI) platform guide + cross-links. (#2333) Thanks @hirefrank.
-- Docs: add Raspberry Pi install guide. (#1871) Thanks @0xJonHoldsCrypto.
-- Docs: add GCP Compute Engine deployment guide. (#1848) Thanks @hougangdev.
-- Docs: add LINE channel guide. Thanks @thewilloftheshadow.
-- Docs: credit both contributors for Control UI refresh. (#1852) Thanks @EnzeD.
-- Onboarding: add Venice API key to non-interactive flow. (#1893) Thanks @jonisjongithub.
-- Onboarding: strengthen security warning copy for beta + access control expectations.
-- Tlon: format thread reply IDs as @ud. (#1837) Thanks @wca4a.
-- Gateway: prefer newest session metadata when combining stores. (#1823) Thanks @emanuelst.
-- Web UI: keep sub-agent announce replies visible in WebChat. (#1977) Thanks @andrescardonas7.
-- CI: increase Node heap size for macOS checks. (#1890) Thanks @realZachi.
-- macOS: avoid crash when rendering code blocks by bumping Textual to 0.3.1. (#2033) Thanks @garricn.
-- Browser: fall back to URL matching for extension relay target resolution. (#1999) Thanks @jonit-dev.
-- Browser: route browser control via gateway/node; remove standalone browser control command and control URL config.
-- Browser: route `browser.request` via node proxies when available; honor proxy timeouts; derive browser ports from `gateway.port`.
-- Update: ignore dist/control-ui for dirty checks and restore after ui builds. (#1976) Thanks @Glucksberg.
-- Build: bundle A2UI assets during build and stop tracking generated bundles. (#2455) Thanks @0oAstro.
-- Telegram: allow caption param for media sends. (#1888) Thanks @mguellsegarra.
-- Telegram: support plugin sendPayload channelData (media/buttons) and validate plugin commands. (#1917) Thanks @JoshuaLelon.
-- Telegram: avoid block replies when streaming is disabled. (#1885) Thanks @ivancasco.
-- Docs: keep docs header sticky so navbar stays visible while scrolling. (#2445) Thanks @chenyuan99.
-- Docs: update exe.dev install instructions. (#https://github.com/moltbot/moltbot/pull/3047) Thanks @zackerthescar.
-- Security: use Windows ACLs for permission audits and fixes on Windows. (#1957)
-- Auth: show copyable Google auth URL after ASCII prompt. (#1787) Thanks @robbyczgw-cla.
-- Routing: precompile session key regexes. (#1697) Thanks @Ray0907.
-- TUI: avoid width overflow when rendering selection lists. (#1686) Thanks @mossein.
-- Telegram: keep topic IDs in restart sentinel notifications. (#1807) Thanks @hsrvc.
-- Telegram: add optional silent send flag (disable notifications). (#2382) Thanks @Suksham-sharma.
-- Telegram: support editing sent messages via message(action="edit"). (#2394) Thanks @marcelomar21.
-- Telegram: support quote replies for message tool and inbound context. (#2900) Thanks @aduk059.
-- Telegram: add sticker receive/send with vision caching. (#2629) Thanks @longjos.
-- Telegram: send sticker pixels to vision models. (#2650)
-- Config: apply config.env before ${VAR} substitution. (#1813) Thanks @spanishflu-est1918.
-- Slack: clear ack reaction after streamed replies. (#2044) Thanks @fancyboi999.
-- macOS: keep custom SSH usernames in remote target. (#2046) Thanks @algal.
-- CLI: use Node's module compile cache for faster startup. (#2808) Thanks @pi0.
-- Routing: add per-account DM session scope and document multi-account isolation. (#3095) Thanks @jarvis-sam.
+### 变更
+- 品牌重塑：将 npm 包/CLI 重命名为 `moltbot`，添加 `moltbot` 兼容层，并将扩展移至 `@moltbot/*` 命名空间。
+- 命令：使用 Telegram 分页对 /help 和 /commands 输出进行分组。(#2504) 感谢 @hougangdev。
+- macOS：将项目本地 `node_modules/.bin` PATH 首选项限制为调试构建（降低 PATH 劫持风险）。
+- macOS：完成 macOS 源代码、捆绑标识符和共享工具包路径的 Moltbot 应用重命名。(#2844) 感谢 @fal3。
+- 品牌重塑：更新 launchd 标签、移动端捆绑 ID 和日志子系统为 bot.molt（旧版 com.clawdbot 迁移）。感谢 @thewilloftheshadow。
+- 工具：添加每个发送者的组工具策略并修复优先级。(#1757) 感谢 @adam91holt。
+- 代理：在压缩保护修剪期间总结丢弃的消息。(#2509) 感谢 @jogi47。
+- 技能：为 Nano Banana Pro 技能添加多图像输入支持。(#1958) 感谢 @tyler6204。
+- 代理：在 exec 允许列表检查中遵守 tools.exec.safeBins。(#2281)
+- Matrix：将插件 SDK 切换到 @vector-im/matrix-bot-sdk。
+- 文档：收紧 Fly 私有部署步骤。(#2289) 感谢 @dguido。
+- 文档：添加迁移到新机器的指南。(#2381)
+- 文档：添加 Northflank 一键部署指南。(#2167) 感谢 @AdeboyeDN。
+- 网关：警告通过查询参数的 hook 令牌；记录标头身份验证首选项。(#2200) 感谢 @YuriNachos。
+- 网关：添加危险的控制 UI 设备身份验证绕过标志 + 审计警告。(#2248)
+- 诊断：警告没有身份验证的网关暴露。(#2016) 感谢 @Alex-Alaniz。
+- 配置：自动迁移旧版状态/配置路径，并保持跨旧版文件名的配置解析一致。
+- Discord：为存在/成员添加可配置的特权网关意图。(#2266) 感谢 @kentaro。
+- 文档：将 Vercel AI Gateway 添加到提供商侧边栏。(#1901) 感谢 @jerilynzheng。
+- 代理：使用完整架构文档扩展 cron 工具描述。(#1988) 感谢 @tomascupr。
+- 技能：为 GitHub、Notion、Slack、Discord 添加缺失的依赖元数据。(#1995) 感谢 @jackheuberger。
+- 文档：添加 Render 部署指南。(#1975) 感谢 @anurag。
+- 文档：添加 Claude Max API 代理指南。(#1875) 感谢 @atalovesyou。
+- 文档：添加 DigitalOcean 部署指南。(#1870) 感谢 @0xJonHoldsCrypto。
+- 文档：添加 Oracle Cloud (OCI) 平台指南 + 交叉链接。(#2333) 感谢 @hirefrank。
+- 文档：添加 Raspberry Pi 安装指南。(#1871) 感谢 @0xJonHoldsCrypto。
+- 文档：添加 GCP Compute Engine 部署指南。(#1848) 感谢 @hougangdev。
+- 文档：添加 LINE 频道指南。感谢 @thewilloftheshadow。
+- 文档：为控制 UI 刷新致谢两位贡献者。(#1852) 感谢 @EnzeD。
+- 入门：将 Venice API 密钥添加到非交互式流程。(#1893) 感谢 @jonisjongithub。
+- 入门：加强 beta 版 + 访问控制预期的安全警告副本。
+- Tlon：将线程回复 ID 格式化为 @ud。(#1837) 感谢 @wca4a。
+- 网关：在合并存储时优先使用最新的会话元数据。(#1823) 感谢 @emanuelst。
+- Web UI：在 WebChat 中保持子代理公告回复可见。(#1977) 感谢 @andrescardonas7。
+- CI：增加 macOS 检查的 Node 堆大小。(#1890) 感谢 @realZachi。
+- macOS：通过将 Textual 升级到 0.3.1 来避免渲染代码块时崩溃。(#2033) 感谢 @garricn。
+- 浏览器：回退到扩展中继目标解析的 URL 匹配。(#1999) 感谢 @jonit-dev。
+- 浏览器：通过网关/节点路由浏览器控制；删除独立的浏览器控制命令和控制 URL 配置。
+- 浏览器：当可用时通过节点代理路由 `browser.request`；遵守代理超时；从 `gateway.port` 推导浏览器端口。
+- 更新：在脏检查中忽略 dist/control-ui 并在 ui 构建后恢复。(#1976) 感谢 @Glucksberg。
+- 构建：在构建期间捆绑 A2UI 资产并停止跟踪生成的捆绑包。(#2455) 感谢 @0oAstro。
+- Telegram：允许媒体发送的 caption 参数。(#1888) 感谢 @mguellsegarra。
+- Telegram：支持插件 sendPayload channelData（媒体/按钮）并验证插件命令。(#1917) 感谢 @JoshuaLelon。
+- Telegram：在禁用流式传输时避免阻止回复。(#1885) 感谢 @ivancasco。
+- 文档：保持文档标题粘性，以便导航栏在滚动时保持可见。(#2445) 感谢 @chenyuan99。
+- 文档：更新 exe.dev 安装说明。(#https://github.com/moltbot/moltbot/pull/3047) 感谢 @zackerthescar。
+- 安全：在 Windows 上使用 Windows ACL 进行权限审计和修复。(#1957)
+- 身份验证：在 ASCII 提示后显示可复制的 Google 身份验证 URL。(#1787) 感谢 @robbyczgw-cla。
+- 路由：预编译会话键正则表达式。(#1697) 感谢 @Ray0907。
+- TUI：在渲染选择列表时避免宽度溢出。(#1686) 感谢 @mossein。
+- Telegram：在重启哨兵通知中保留主题 ID。(#1807) 感谢 @hsrvc。
+- Telegram：添加可选的静默发送标志（禁用通知）。(#2382) 感谢 @Suksham-sharma。
+- Telegram：通过 message(action="edit") 支持编辑已发送的消息。(#2394) 感谢 @marcelomar21。
+- Telegram：为消息工具和入站上下文支持引用回复。(#2900) 感谢 @aduk059。
+- Telegram：添加带视觉缓存的贴纸接收/发送。(#2629) 感谢 @longjos。
+- Telegram：将贴纸像素发送到视觉模型。(#2650)
+- 配置：在 ${VAR} 替换之前应用 config.env。(#1813) 感谢 @spanishflu-est1918。
+- Slack：在流式回复后清除 ack 反应。(#2044) 感谢 @fancyboi999。
+- macOS：在远程目标中保留自定义 SSH 用户名。(#2046) 感谢 @algal。
+- CLI：使用 Node 的模块编译缓存以加快启动速度。(#2808) 感谢 @pi0。
+- 路由：添加每个账户的 DM 会话范围并记录多账户隔离。(#3095) 感谢 @jarvis-sam。
 
-### Breaking
-- **BREAKING:** Gateway auth mode "none" is removed; gateway now requires token/password (Tailscale Serve identity still allowed).
+### 重大变更
+- **重大变更：** 网关身份验证模式 "none" 已移除；网关现在需要令牌/密码（仍允许 Tailscale Serve 身份）。
 
-### Fixes
-- Discord: restore username directory lookup in target resolution. (#3131) Thanks @bonald.
-- Agents: align MiniMax base URL test expectation with default provider config. (#3131) Thanks @bonald.
-- Agents: prevent retries on oversized image errors and surface size limits. (#2871) Thanks @Suksham-sharma.
-- Agents: inherit provider baseUrl/api for inline models. (#2740) Thanks @lploc94.
-- Memory Search: keep auto provider model defaults and only include remote when configured. (#2576) Thanks @papago2355.
-- TTS: read OPENAI_TTS_BASE_URL at runtime instead of module load to honor config.env. (#3341) Thanks @hclsys.
-- macOS: auto-scroll to bottom when sending a new message while scrolled up. (#2471) Thanks @kennyklee.
-- Web UI: auto-expand the chat compose textarea while typing (with sensible max height). (#2950) Thanks @shivamraut101.
-- Gateway: prevent crashes on transient network errors (fetch failures, timeouts, DNS). Added fatal error detection to only exit on truly critical errors. Fixes #2895, #2879, #2873. (#2980) Thanks @elliotsecops.
-- Agents: guard channel tool listActions to avoid plugin crashes. (#2859) Thanks @mbelinky.
-- Discord: stop resolveDiscordTarget from passing directory params into messaging target parsers. Fixes #3167. Thanks @thewilloftheshadow.
-- Discord: avoid resolving bare channel names to user DMs when a username matches. Thanks @thewilloftheshadow.
-- Discord: fix directory config type import for target resolution. Thanks @thewilloftheshadow.
-- Providers: update MiniMax API endpoint and compatibility mode. (#3064) Thanks @hlbbbbbbb.
-- Telegram: treat more network errors as recoverable in polling. (#3013) Thanks @ryancontent.
-- Discord: resolve usernames to user IDs for outbound messages. (#2649) Thanks @nonggialiang.
-- Providers: update Moonshot Kimi model references to kimi-k2.5. (#2762) Thanks @MarvinCui.
-- Gateway: suppress AbortError and transient network errors in unhandled rejections. (#2451) Thanks @Glucksberg.
-- TTS: keep /tts status replies on text-only commands and avoid duplicate block-stream audio. (#2451) Thanks @Glucksberg.
-- Security: pin npm overrides to keep tar@7.5.4 for install toolchains.
-- Security: properly test Windows ACL audit for config includes. (#2403) Thanks @dominicnunez.
-- CLI: recognize versioned Node executables when parsing argv. (#2490) Thanks @David-Marsh-Photo.
-- CLI: avoid prompting for gateway runtime under the spinner. (#2874)
-- BlueBubbles: coalesce inbound URL link preview messages. (#1981) Thanks @tyler6204.
-- Cron: allow payloads containing "heartbeat" in event filter. (#2219) Thanks @dwfinkelstein.
-- CLI: avoid loading config for global help/version while registering plugin commands. (#2212) Thanks @dial481.
-- Agents: include memory.md when bootstrapping memory context. (#2318) Thanks @czekaj.
-- Agents: release session locks on process termination and cover more signals. (#2483) Thanks @janeexai.
-- Agents: skip cooldowned providers during model failover. (#2143) Thanks @YiWang24.
-- Telegram: harden polling + retry behavior for transient network errors and Node 22 transport issues. (#2420) Thanks @techboss.
-- Telegram: ignore non-forum group message_thread_id while preserving DM thread sessions. (#2731) Thanks @dylanneve1.
-- Telegram: wrap reasoning italics per line to avoid raw underscores. (#2181) Thanks @YuriNachos.
-- Telegram: centralize API error logging for delivery and bot calls. (#2492) Thanks @altryne.
-- Voice Call: enforce Twilio webhook signature verification for ngrok URLs; disable ngrok free tier bypass by default.
-- Security: harden Tailscale Serve auth by validating identity via local tailscaled before trusting headers.
-- Build: align memory-core peer dependency with lockfile.
-- Security: add mDNS discovery mode with minimal default to reduce information disclosure. (#1882) Thanks @orlyjamie.
-- Security: harden URL fetches with DNS pinning to reduce rebinding risk. Thanks Chris Zheng.
-- Web UI: improve WebChat image paste previews and allow image-only sends. (#1925) Thanks @smartprogrammer93.
-- Security: wrap external hook content by default with a per-hook opt-out. (#1827) Thanks @mertcicekci0.
-- Gateway: default auth now fail-closed (token/password required; Tailscale Serve identity remains allowed).
-- Gateway: treat loopback + non-local Host connections as remote unless trusted proxy headers are present.
-- Onboarding: remove unsupported gateway auth "off" choice from onboarding/configure flows and CLI flags.
+### 修复
+- Discord：在目标解析中恢复用户名目录查找。(#3131) 感谢 @bonald。
+- 代理：将 MiniMax 基础 URL 测试期望与默认提供商配置对齐。(#3131) 感谢 @bonald。
+- 代理：防止在超大图像错误上重试并显示大小限制。(#2871) 感谢 @Suksham-sharma。
+- 代理：为内联模型继承提供商 baseUrl/api。(#2740) 感谢 @lploc94。
+- 内存搜索：保持自动提供商模型默认值，仅在配置时包含远程。(#2576) 感谢 @papago2355。
+- TTS：在运行时读取 OPENAI_TTS_BASE_URL 而不是模块加载，以遵守 config.env。(#3341) 感谢 @hclsys。
+- macOS：在向上滚动时发送新消息时自动滚动到底部。(#2471) 感谢 @kennyklee。
+- Web UI：在输入时自动展开聊天撰写文本区域（具有合理的最大高度）。(#2950) 感谢 @shivamraut101。
+- 网关：防止瞬时网络错误（获取失败、超时、DNS）导致的崩溃。添加致命错误检测以仅在真正的关键错误时退出。修复 #2895、#2879、#2873。(#2980) 感谢 @elliotsecops。
+- 代理：保护通道工具 listActions 以避免插件崩溃。(#2859) 感谢 @mbelinky。
+- Discord：停止 resolveDiscordTarget 将目录参数传递到消息目标解析器。修复 #3167。感谢 @thewilloftheshadow。
+- Discord：避免在用户名匹配时将裸频道名称解析为用户 DM。感谢 @thewilloftheshadow。
+- Discord：修复目标解析的目录配置类型导入。感谢 @thewilloftheshadow。
+- 提供商：更新 MiniMax API 端点和兼容模式。(#3064) 感谢 @hlbbbbbbb。
+- Telegram：在轮询中将更多网络错误视为可恢复。(#3013) 感谢 @ryancontent。
+- Discord：将用户名解析为出站消息的用户 ID。(#2649) 感谢 @nonggialiang。
+- 提供商：将 Moonshot Kimi 模型引用更新为 kimi-k2.5。(#2762) 感谢 @MarvinCui。
+- 网关：在未处理的拒绝中抑制 AbortError 和瞬时网络错误。(#2451) 感谢 @Glucksberg。
+- TTS：保持 /tts 状态回复用于纯文本命令并避免重复块流音频。(#2451) 感谢 @Glucksberg。
+- 安全：固定 npm 覆盖以保持 tar@7.5.4 用于安装工具链。
+- 安全：正确测试 Windows ACL 审计以进行配置包含。(#2403) 感谢 @dominicnunez。
+- CLI：在解析 argv 时识别版本化的 Node 可执行文件。(#2490) 感谢 @David-Marsh-Photo。
+- CLI：避免在微调器下提示网关运行时。(#2874)
+- BlueBubbles：合并入站 URL 链接预览消息。(#1981) 感谢 @tyler6204。
+- Cron：允许事件过滤器中包含 "heartbeat" 的有效负载。(#2219) 感谢 @dwfinkelstein。
+- CLI：在注册插件命令时避免为全局帮助/版本加载配置。(#2212) 感谢 @dial481。
+- 代理：在引导内存上下文时包含 memory.md。(#2318) 感谢 @czekaj。
+- 代理：在进程终止时释放会话锁并覆盖更多信号。(#2483) 感谢 @janeexai。
+- 代理：在模型故障转移期间跳过冷却的提供商。(#2143) 感谢 @YiWang24。
+- Telegram：针对瞬时网络错误和 Node 22 传输问题加强轮询 + 重试行为。(#2420) 感谢 @techboss。
+- Telegram：在保留 DM 线程会话的同时忽略非论坛组的 message_thread_id。(#2731) 感谢 @dylanneve1。
+- Telegram：逐行包装推理斜体以避免原始下划线。(#2181) 感谢 @YuriNachos。
+- Telegram：集中传递和 bot 调用的 API 错误日志记录。(#2492) 感谢 @altryne。
+- 语音通话：强制 Twilio webhook 签名验证用于 ngrok URL；默认禁用 ngrok 免费层绕过。
+- 安全：通过在信任标头之前通过本地 tailscaled 验证身份来加强 Tailscale Serve 身份验证。
+- 构建：将 memory-core 对等依赖项与锁定文件对齐。
+- 安全：添加 mDNS 发现模式，默认最小值以减少信息泄露。(#1882) 感谢 @orlyjamie。
+- 安全：使用 DNS 固定加强 URL 获取以减少重新绑定风险。感谢 Chris Zheng。
+- Web UI：改进 WebChat 图像粘贴预览并允许仅图像发送。(#1925) 感谢 @smartprogrammer93。
+- 安全：默认情况下使用每个 hook 的选择退出包装外部 hook 内容。(#1827) 感谢 @mertcicekci0。
+- 网关：默认身份验证现在是故障关闭（需要令牌/密码；Tailscale Serve 身份仍然允许）。
+- 网关：除非存在受信任的代理标头，否则将环回 + 非本地主机连接视为远程。
+- 入门：从入门/配置流程和 CLI 标志中移除不支持的网关身份验证 "off" 选择。
 
 ## 2026.1.24-3
 
-### Fixes
-- Slack: fix image downloads failing due to missing Authorization header on cross-origin redirects. (#1936) Thanks @sanderhelgesen.
-- Gateway: harden reverse proxy handling for local-client detection and unauthenticated proxied connects. (#1795) Thanks @orlyjamie.
-- Security audit: flag loopback Control UI with auth disabled as critical. (#1795) Thanks @orlyjamie.
-- CLI: resume claude-cli sessions and stream CLI replies to TUI clients. (#1921) Thanks @rmorse.
+### 修复
+- Slack：修复由于跨源重定向时缺少 Authorization 标头导致的图像下载失败。(#1936) 感谢 @sanderhelgesen。
+- 网关：加强本地客户端检测和未经验证代理连接的反向代理处理。(#1795) 感谢 @orlyjamie。
+- 安全审计：将禁用身份验证的环回控制 UI 标记为关键。(#1795) 感谢 @orlyjamie。
+- CLI：恢复 claude-cli 会话并将 CLI 回复流式传输到 TUI 客户端。(#1921) 感谢 @rmorse。
 
 ## 2026.1.24-2
 
-### Fixes
-- Packaging: include dist/link-understanding output in npm tarball (fixes missing apply.js import on install).
+### 修复
+- 打包：在 npm tarball 中包含 dist/link-understanding 输出（修复安装时缺少 apply.js 导入）。
 
 ## 2026.1.24-1
 
-### Fixes
-- Packaging: include dist/shared output in npm tarball (fixes missing reasoning-tags import on install).
+### 修复
+- 打包：在 npm tarball 中包含 dist/shared 输出（修复安装时缺少 reasoning-tags 导入）。
 
 ## 2026.1.24
 
-### Highlights
-- Providers: Ollama discovery + docs; Venice guide upgrades + cross-links. (#1606) Thanks @abhaymundhara. https://docs.molt.bot/providers/ollama https://docs.molt.bot/providers/venice
-- Channels: LINE plugin (Messaging API) with rich replies + quick replies. (#1630) Thanks @plum-dawg.
-- TTS: Edge fallback (keyless) + `/tts` auto modes. (#1668, #1667) Thanks @steipete, @sebslight. https://docs.molt.bot/tts
-- Exec approvals: approve in-chat via `/approve` across all channels (including plugins). (#1621) Thanks @czekaj. https://docs.molt.bot/tools/exec-approvals https://docs.molt.bot/tools/slash-commands
-- Telegram: DM topics as separate sessions + outbound link preview toggle. (#1597, #1700) Thanks @rohannagpal, @zerone0x. https://docs.molt.bot/channels/telegram
+### 亮点
+- 提供商：Ollama 发现 + 文档；Venice 指南升级 + 交叉链接。(#1606) 感谢 @abhaymundhara。https://docs.molt.bot/providers/ollama https://docs.molt.bot/providers/venice
+- 频道：LINE 插件（Messaging API）支持丰富回复 + 快速回复。(#1630) 感谢 @plum-dawg。
+- TTS：Edge 回退（无密钥）+ `/tts` 自动模式。(#1668, #1667) 感谢 @steipete, @sebslight。https://docs.molt.bot/tts
+- Exec 批准：通过 `/approve` 在所有频道（包括插件）中进行聊天内批准。(#1621) 感谢 @czekaj。https://docs.molt.bot/tools/exec-approvals https://docs.molt.bot/tools/slash-commands
+- Telegram：DM 主题作为独立会话 + 出站链接预览切换。(#1597, #1700) 感谢 @rohannagpal, @zerone0x。https://docs.molt.bot/channels/telegram
 
-### Changes
-- Channels: add LINE plugin (Messaging API) with rich replies, quick replies, and plugin HTTP registry. (#1630) Thanks @plum-dawg.
-- TTS: add Edge TTS provider fallback, defaulting to keyless Edge with MP3 retry on format failures. (#1668) Thanks @steipete. https://docs.molt.bot/tts
-- TTS: add auto mode enum (off/always/inbound/tagged) with per-session `/tts` override. (#1667) Thanks @sebslight. https://docs.molt.bot/tts
-- Telegram: treat DM topics as separate sessions and keep DM history limits stable with thread suffixes. (#1597) Thanks @rohannagpal.
-- Telegram: add `channels.telegram.linkPreview` to toggle outbound link previews. (#1700) Thanks @zerone0x. https://docs.molt.bot/channels/telegram
-- Web search: add Brave freshness filter parameter for time-scoped results. (#1688) Thanks @JonUleis. https://docs.molt.bot/tools/web
-- UI: refresh Control UI dashboard design system (colors, icons, typography). (#1745, #1786) Thanks @EnzeD, @mousberg.
-- Exec approvals: forward approval prompts to chat with `/approve` for all channels (including plugins). (#1621) Thanks @czekaj. https://docs.molt.bot/tools/exec-approvals https://docs.molt.bot/tools/slash-commands
-- Gateway: expose config.patch in the gateway tool with safe partial updates + restart sentinel. (#1653) Thanks @Glucksberg.
-- Diagnostics: add diagnostic flags for targeted debug logs (config + env override). https://docs.molt.bot/diagnostics/flags
-- Docs: expand FAQ (migration, scheduling, concurrency, model recommendations, OpenAI subscription auth, Pi sizing, hackable install, docs SSL workaround).
-- Docs: add verbose installer troubleshooting guidance.
-- Docs: add macOS VM guide with local/hosted options + VPS/nodes guidance. (#1693) Thanks @f-trycua.
-- Docs: add Bedrock EC2 instance role setup + IAM steps. (#1625) Thanks @sergical. https://docs.molt.bot/bedrock
-- Docs: update Fly.io guide notes.
-- Dev: add prek pre-commit hooks + dependabot config for weekly updates. (#1720) Thanks @dguido.
+### 变更
+- 频道：添加 LINE 插件（Messaging API），支持丰富回复、快速回复和插件 HTTP 注册表。(#1630) 感谢 @plum-dawg。
+- TTS：添加 Edge TTS 提供商回退，默认为无密钥 Edge，在格式失败时重试 MP3。(#1668) 感谢 @steipete。https://docs.molt.bot/tts
+- TTS：添加自动模式枚举（off/always/inbound/tagged），支持每个会话的 `/tts` 覆盖。(#1667) 感谢 @sebslight。https://docs.molt.bot/tts
+- Telegram：将 DM 主题视为独立会话，并使用线程后缀保持 DM 历史限制稳定。(#1597) 感谢 @rohannagpal。
+- Telegram：添加 `channels.telegram.linkPreview` 来切换出站链接预览。(#1700) 感谢 @zerone0x。https://docs.molt.bot/channels/telegram
+- Web 搜索：添加 Brave 新鲜度过滤器参数用于时间范围结果。(#1688) 感谢 @JonUleis。https://docs.molt.bot/tools/web
+- UI：刷新控制 UI 仪表板设计系统（颜色、图标、排版）。(#1745, #1786) 感谢 @EnzeD, @mousberg。
+- Exec 批准：将批准提示转发到聊天，通过 `/approve` 用于所有频道（包括插件）。(#1621) 感谢 @czekaj。https://docs.molt.bot/tools/exec-approvals https://docs.molt.bot/tools/slash-commands
+- 网关：在网关工具中公开 config.patch，支持安全部分更新 + 重启哨兵。(#1653) 感谢 @Glucksberg。
+- 诊断：添加诊断标志用于定向调试日志（配置 + 环境覆盖）。https://docs.molt.bot/diagnostics/flags
+- 文档：扩展 FAQ（迁移、调度、并发、模型推荐、OpenAI 订阅身份验证、Pi 大小、可破解安装、文档 SSL 变通方法）。
+- 文档：添加详细的安装程序故障排除指南。
+- 文档：添加 macOS VM 指南，包含本地/托管选项 + VPS/节点指南。(#1693) 感谢 @f-trycua。
+- 文档：添加 Bedrock EC2 实例角色设置 + IAM 步骤。(#1625) 感谢 @sergical。https://docs.molt.bot/bedrock
+- 文档：更新 Fly.io 指南说明。
+- 开发：添加 prek pre-commit hooks + dependabot 配置用于每周更新。(#1720) 感谢 @dguido。
 
-### Fixes
-- Web UI: fix config/debug layout overflow, scrolling, and code block sizing. (#1715) Thanks @saipreetham589.
-- Web UI: show Stop button during active runs, swap back to New session when idle. (#1664) Thanks @ndbroadbent.
-- Web UI: clear stale disconnect banners on reconnect; allow form saves with unsupported schema paths but block missing schema. (#1707) Thanks @Glucksberg.
-- Web UI: hide internal `message_id` hints in chat bubbles.
-- Gateway: allow Control UI token-only auth to skip device pairing even when device identity is present (`gateway.controlUi.allowInsecureAuth`). (#1679) Thanks @steipete.
-- Matrix: decrypt E2EE media attachments with preflight size guard. (#1744) Thanks @araa47.
-- BlueBubbles: route phone-number targets to DMs, avoid leaking routing IDs, and auto-create missing DMs (Private API required). (#1751) Thanks @tyler6204. https://docs.molt.bot/channels/bluebubbles
-- BlueBubbles: keep part-index GUIDs in reply tags when short IDs are missing.
-- iMessage: normalize chat_id/chat_guid/chat_identifier prefixes case-insensitively and keep service-prefixed handles stable. (#1708) Thanks @aaronn.
-- Signal: repair reaction sends (group/UUID targets + CLI author flags). (#1651) Thanks @vilkasdev.
-- Signal: add configurable signal-cli startup timeout + external daemon mode docs. (#1677) https://docs.molt.bot/channels/signal
-- Telegram: set fetch duplex="half" for uploads on Node 22 to avoid sendPhoto failures. (#1684) Thanks @commdata2338.
-- Telegram: use wrapped fetch for long-polling on Node to normalize AbortSignal handling. (#1639)
-- Telegram: honor per-account proxy for outbound API calls. (#1774) Thanks @radek-paclt.
-- Telegram: fall back to text when voice notes are blocked by privacy settings. (#1725) Thanks @foeken.
-- Voice Call: return stream TwiML for outbound conversation calls on initial Twilio webhook. (#1634)
-- Voice Call: serialize Twilio TTS playback and cancel on barge-in to prevent overlap. (#1713) Thanks @dguido.
-- Google Chat: tighten email allowlist matching, typing cleanup, media caps, and onboarding/docs/tests. (#1635) Thanks @iHildy.
-- Google Chat: normalize space targets without double `spaces/` prefix.
-- Agents: auto-compact on context overflow prompt errors before failing. (#1627) Thanks @rodrigouroz.
-- Agents: use the active auth profile for auto-compaction recovery.
-- Media understanding: skip image understanding when the primary model already supports vision. (#1747) Thanks @tyler6204.
-- Models: default missing custom provider fields so minimal configs are accepted.
-- Messaging: keep newline chunking safe for fenced markdown blocks across channels.
-- Messaging: treat newline chunking as paragraph-aware (blank-line splits) to keep lists and headings together. (#1726) Thanks @tyler6204.
-- TUI: reload history after gateway reconnect to restore session state. (#1663)
-- Heartbeat: normalize target identifiers for consistent routing.
-- Exec: keep approvals for elevated ask unless full mode. (#1616) Thanks @ivancasco.
-- Exec: treat Windows platform labels as Windows for node shell selection. (#1760) Thanks @ymat19.
-- Gateway: include inline config env vars in service install environments. (#1735) Thanks @Seredeep.
-- Gateway: skip Tailscale DNS probing when tailscale.mode is off. (#1671)
-- Gateway: reduce log noise for late invokes + remote node probes; debounce skills refresh. (#1607) Thanks @petter-b.
-- Gateway: clarify Control UI/WebChat auth error hints for missing tokens. (#1690)
-- Gateway: listen on IPv6 loopback when bound to 127.0.0.1 so localhost webhooks work.
-- Gateway: store lock files in the temp directory to avoid stale locks on persistent volumes. (#1676)
-- macOS: default direct-transport `ws://` URLs to port 18789; document `gateway.remote.transport`. (#1603) Thanks @ngutman.
-- Tests: cap Vitest workers on CI macOS to reduce timeouts. (#1597) Thanks @rohannagpal.
-- Tests: avoid fake-timer dependency in embedded runner stream mock to reduce CI flakes. (#1597) Thanks @rohannagpal.
-- Tests: increase embedded runner ordering test timeout to reduce CI flakes. (#1597) Thanks @rohannagpal.
+### 修复
+- Web UI：修复配置/调试布局溢出、滚动和代码块大小。(#1715) 感谢 @saipreetham589。
+- Web UI：在活动运行期间显示停止按钮，空闲时切换回新会话。(#1664) 感谢 @ndbroadbent。
+- Web UI：在重新连接时清除过时的断开连接横幅；允许保存不支持的架构路径的表单，但阻止缺少架构。(#1707) 感谢 @Glucksberg。
+- Web UI：在聊天气泡中隐藏内部 `message_id` 提示。
+- 网关：允许控制 UI 仅令牌身份验证跳过设备配对，即使存在设备身份（`gateway.controlUi.allowInsecureAuth`）。(#1679) 感谢 @steipete。
+- Matrix：使用预检大小保护解密 E2EE 媒体附件。(#1744) 感谢 @araa47。
+- BlueBubbles：将电话号码目标路由到 DM，避免泄露路由 ID，并自动创建缺失的 DM（需要私有 API）。(#1751) 感谢 @tyler6204。https://docs.molt.bot/channels/bluebubbles
+- BlueBubbles：在缺少短 ID 时，在回复标签中保留部分索引 GUID。
+- iMessage：不区分大小写地规范化 chat_id/chat_guid/chat_identifier 前缀，并保持服务前缀的句柄稳定。(#1708) 感谢 @aaronn。
+- Signal：修复反应发送（组/UUID 目标 + CLI 作者标志）。(#1651) 感谢 @vilkasdev。
+- Signal：添加可配置的 signal-cli 启动超时 + 外部守护进程模式文档。(#1677) https://docs.molt.bot/channels/signal
+- Telegram：在 Node 22 上为上传设置 fetch duplex="half" 以避免 sendPhoto 失败。(#1684) 感谢 @commdata2338。
+- Telegram：在 Node 上使用包装的 fetch 进行长轮询，以规范化 AbortSignal 处理。(#1639)
+- Telegram：遵守出站 API 调用的每个账户代理。(#1774) 感谢 @radek-paclt。
+- Telegram：当语音笔记被隐私设置阻止时回退到文本。(#1725) 感谢 @foeken。
+- 语音通话：在初始 Twilio webhook 上为出站对话调用返回流 TwiML。(#1634)
+- 语音通话：序列化 Twilio TTS 播放并在打断时取消以防止重叠。(#1713) 感谢 @dguido。
+- Google Chat：收紧电子邮件允许列表匹配、输入清理、媒体限制和入门/文档/测试。(#1635) 感谢 @iHildy。
+- Google Chat：规范化空间目标，不带双 `spaces/` 前缀。
+- 代理：在失败前自动压缩上下文溢出提示错误。(#1627) 感谢 @rodrigouroz。
+- 代理：使用活动身份验证配置文件进行自动压缩恢复。
+- 媒体理解：当主模型已支持视觉时跳过图像理解。(#1747) 感谢 @tyler6204。
+- 模型：默认缺失的自定义提供商字段，以便接受最小配置。
+- 消息：保持换行符分块对跨频道的围栏 markdown 块安全。
+- 消息：将换行符分块视为段落感知（空行分割），以保持列表和标题在一起。(#1726) 感谢 @tyler6204。
+- TUI：在网关重新连接后重新加载历史记录以恢复会话状态。(#1663)
+- 心跳：规范化目标标识符以实现一致路由。
+- Exec：保持提升的 ask 的批准，除非是完整模式。(#1616) 感谢 @ivancasco。
+- Exec：将 Windows 平台标签视为 Windows 用于节点 shell 选择。(#1760) 感谢 @ymat19。
+- 网关：在服务安装环境中包含内联配置环境变量。(#1735) 感谢 @Seredeep。
+- 网关：当 tailscale.mode 关闭时跳过 Tailscale DNS 探测。(#1671)
+- 网关：减少延迟调用 + 远程节点探测的日志噪音；防抖技能刷新。(#1607) 感谢 @petter-b。
+- 网关：阐明缺失令牌的控制 UI/WebChat 身份验证错误提示。(#1690)
+- 网关：绑定到 127.0.0.1 时在 IPv6 环回上监听，以便本地主机 webhook 工作。
+- 网关：将锁文件存储在临时目录中，以避免持久卷上的陈旧锁。(#1676)
+- macOS：将直接传输 `ws://` URL 默认为端口 18789；记录 `gateway.remote.transport`。(#1603) 感谢 @ngutman。
+- 测试：在 CI macOS 上限制 Vitest 工作人员以减少超时。(#1597) 感谢 @rohannagpal。
+- 测试：避免在嵌入式运行器流模拟中使用 fake-timer 依赖以减少 CI 不稳定。(#1597) 感谢 @rohannagpal。
+- 测试：增加嵌入式运行器排序测试超时以减少 CI 不稳定。(#1597) 感谢 @rohannagpal。
 
 ## 2026.1.23-1
 
-### Fixes
-- Packaging: include dist/tts output in npm tarball (fixes missing dist/tts/tts.js).
+### 修复
+- 打包：在 npm tarball 中包含 dist/tts 输出（修复缺少 dist/tts/tts.js）。
 
 ## 2026.1.23
 
-### Highlights
-- TTS: move Telegram TTS into core + enable model-driven TTS tags by default for expressive audio replies. (#1559) Thanks @Glucksberg. https://docs.molt.bot/tts
-- Gateway: add `/tools/invoke` HTTP endpoint for direct tool calls (auth + tool policy enforced). (#1575) Thanks @vignesh07. https://docs.molt.bot/gateway/tools-invoke-http-api
-- Heartbeat: per-channel visibility controls (OK/alerts/indicator). (#1452) Thanks @dlauer. https://docs.molt.bot/gateway/heartbeat
-- Deploy: add Fly.io deployment support + guide. (#1570) https://docs.molt.bot/platforms/fly
-- Channels: add Tlon/Urbit channel plugin (DMs, group mentions, thread replies). (#1544) Thanks @wca4a. https://docs.molt.bot/channels/tlon
+### 亮点
+- TTS：将 Telegram TTS 移至核心 + 默认启用模型驱动的 TTS 标签，以实现富有表现力的音频回复。(#1559) 感谢 @Glucksberg。https://docs.molt.bot/tts
+- 网关：添加 `/tools/invoke` HTTP 端点用于直接工具调用（强制执行身份验证 + 工具策略）。(#1575) 感谢 @vignesh07。https://docs.molt.bot/gateway/tools-invoke-http-api
+- 心跳：每个频道的可见性控制（OK/警报/指示器）。(#1452) 感谢 @dlauer。https://docs.molt.bot/gateway/heartbeat
+- 部署：添加 Fly.io 部署支持 + 指南。(#1570) https://docs.molt.bot/platforms/fly
+- 频道：添加 Tlon/Urbit 频道插件（DM、组提及、线程回复）。(#1544) 感谢 @wca4a。https://docs.molt.bot/channels/tlon
 
 ### Changes
 - Channels: allow per-group tool allow/deny policies across built-in + plugin channels. (#1546) Thanks @adam91holt. https://docs.molt.bot/multi-agent-sandbox-tools

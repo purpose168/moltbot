@@ -2,6 +2,8 @@ import AVFoundation
 import OSLog
 import SwiftUI
 
+/// 麦克风电平监视器
+/// 监听麦克风电平变化并通知回调
 actor MicLevelMonitor {
     private let logger = Logger(subsystem: "bot.molt", category: "voicewake.meter")
     private var engine: AVAudioEngine?
@@ -9,6 +11,8 @@ actor MicLevelMonitor {
     private var running = false
     private var smoothedLevel: Double = 0
 
+    /// 启动监视器
+    /// - Parameter onLevel: 电平更新回调
     func start(onLevel: @Sendable @escaping (Double) -> Void) async throws {
         self.update = onLevel
         if self.running { return }
@@ -36,6 +40,7 @@ actor MicLevelMonitor {
         self.running = true
     }
 
+    /// 停止监视器
     func stop() {
         guard self.running else { return }
         if let engine {
@@ -46,6 +51,7 @@ actor MicLevelMonitor {
         self.running = false
     }
 
+    /// 推送电平更新
     private func push(level: Double) {
         self.smoothedLevel = (self.smoothedLevel * 0.45) + (level * 0.55)
         guard let update else { return }
@@ -53,6 +59,7 @@ actor MicLevelMonitor {
         Task { @MainActor in update(value) }
     }
 
+    /// 计算规范化电平
     private static func normalizedLevel(from buffer: AVAudioPCMBuffer) -> Double {
         guard let channel = buffer.floatChannelData?[0] else { return 0 }
         let frameCount = Int(buffer.frameLength)
@@ -69,6 +76,7 @@ actor MicLevelMonitor {
     }
 }
 
+/// 麦克风电平条视图
 struct MicLevelBar: View {
     let level: Double
     let segments: Int = 12
@@ -88,6 +96,7 @@ struct MicLevelBar: View {
                 .stroke(Color.gray.opacity(0.25), lineWidth: 1))
     }
 
+    /// 获取段颜色
     private func segmentColor(for idx: Int) -> Color {
         let fraction = Double(idx + 1) / Double(self.segments)
         if fraction < 0.65 { return .green }

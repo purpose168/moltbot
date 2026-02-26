@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// 根标签视图，包含屏幕、语音和设置三个标签
 struct RootTabs: View {
     @Environment(NodeAppModel.self) private var appModel
     @Environment(VoiceWakeManager.self) private var voiceWake
@@ -11,15 +12,15 @@ struct RootTabs: View {
     var body: some View {
         TabView(selection: self.$selectedTab) {
             ScreenTab()
-                .tabItem { Label("Screen", systemImage: "rectangle.and.hand.point.up.left") }
+                .tabItem { Label("屏幕", systemImage: "rectangle.and.hand.point.up.left") }
                 .tag(0)
 
             VoiceTab()
-                .tabItem { Label("Voice", systemImage: "mic") }
+                .tabItem { Label("语音", systemImage: "mic") }
                 .tag(1)
 
             SettingsTab()
-                .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tabItem { Label("设置", systemImage: "gearshape") }
                 .tag(2)
         }
         .overlay(alignment: .topLeading) {
@@ -64,6 +65,7 @@ struct RootTabs: View {
         }
     }
 
+    /// 获取网关状态
     private var gatewayStatus: StatusPill.GatewayState {
         if self.appModel.gatewayServerName != nil { return .connected }
 
@@ -81,11 +83,12 @@ struct RootTabs: View {
         return .disconnected
     }
 
+    /// 获取状态活动信息
     private var statusActivity: StatusPill.Activity? {
-        // Keep the top pill consistent across tabs (camera + voice wake + pairing states).
+        // 保持所有标签页顶部状态一致（相机 + 语音唤醒 + 配对状态）
         if self.appModel.isBackgrounded {
             return StatusPill.Activity(
-                title: "Foreground required",
+                title: "需要前台运行",
                 systemImage: "exclamationmark.triangle.fill",
                 tint: .orange)
         }
@@ -93,15 +96,15 @@ struct RootTabs: View {
         let gatewayStatus = self.appModel.gatewayStatusText.trimmingCharacters(in: .whitespacesAndNewlines)
         let gatewayLower = gatewayStatus.lowercased()
         if gatewayLower.contains("repair") {
-            return StatusPill.Activity(title: "Repairing…", systemImage: "wrench.and.screwdriver", tint: .orange)
+            return StatusPill.Activity(title: "正在修复…", systemImage: "wrench.and.screwdriver", tint: .orange)
         }
         if gatewayLower.contains("approval") || gatewayLower.contains("pairing") {
-            return StatusPill.Activity(title: "Approval pending", systemImage: "person.crop.circle.badge.clock")
+            return StatusPill.Activity(title: "等待批准", systemImage: "person.crop.circle.badge.clock")
         }
-        // Avoid duplicating the primary gateway status ("Connecting…") in the activity slot.
+        // 避免在活动槽中重复显示主要网关状态（"正在连接…"）
 
         if self.appModel.screenRecordActive {
-            return StatusPill.Activity(title: "Recording screen…", systemImage: "record.circle.fill", tint: .red)
+            return StatusPill.Activity(title: "正在录制屏幕…", systemImage: "record.circle.fill", tint: .red)
         }
 
         if let cameraHUDText = self.appModel.cameraHUDText,
@@ -130,11 +133,11 @@ struct RootTabs: View {
         if self.voiceWakeEnabled {
             let voiceStatus = self.appModel.voiceWake.statusText
             if voiceStatus.localizedCaseInsensitiveContains("microphone permission") {
-                return StatusPill.Activity(title: "Mic permission", systemImage: "mic.slash", tint: .orange)
+                return StatusPill.Activity(title: "麦克风权限", systemImage: "mic.slash", tint: .orange)
             }
             if voiceStatus == "Paused" {
-                let suffix = self.appModel.isBackgrounded ? " (background)" : ""
-                return StatusPill.Activity(title: "Voice Wake paused\(suffix)", systemImage: "pause.circle.fill")
+                let suffix = self.appModel.isBackgrounded ? " (后台)" : ""
+                return StatusPill.Activity(title: "语音唤醒已暂停\(suffix)", systemImage: "pause.circle.fill")
             }
         }
 

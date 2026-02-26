@@ -21,10 +21,10 @@ extension OnboardingView {
                     await self.saveAgentWorkspace(AgentWorkspace.displayPath(for: url))
                 }
             } catch {
-                self.workspaceStatus = "Failed to create workspace: \(error.localizedDescription)"
+                self.workspaceStatus = "创建工作区失败：\(error.localizedDescription)"
             }
         case let .unsafe(reason):
-            self.workspaceStatus = "Workspace not touched: \(reason)"
+            self.workspaceStatus = "未触及工作区：\(reason)"
         }
         self.refreshBootstrapStatus()
     }
@@ -55,15 +55,15 @@ extension OnboardingView {
         do {
             let url = AgentWorkspace.resolveWorkspaceURL(from: self.workspacePath)
             if case let .unsafe(reason) = AgentWorkspace.bootstrapSafety(for: url) {
-                self.workspaceStatus = "Workspace not created: \(reason)"
+                self.workspaceStatus = "未创建工作区：\(reason)"
                 return
             }
             _ = try AgentWorkspace.bootstrap(workspaceURL: url)
             self.workspacePath = AgentWorkspace.displayPath(for: url)
-            self.workspaceStatus = "Workspace ready at \(self.workspacePath)"
+            self.workspaceStatus = "工作区已就绪于 \(self.workspacePath)"
             self.refreshBootstrapStatus()
         } catch {
-            self.workspaceStatus = "Failed to create workspace: \(error.localizedDescription)"
+            self.workspaceStatus = "创建工作区失败：\(error.localizedDescription)"
         }
     }
 

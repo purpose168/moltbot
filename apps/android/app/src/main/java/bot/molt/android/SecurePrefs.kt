@@ -14,6 +14,10 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import java.util.UUID
 
+/**
+ * 安全首选项类
+ * 使用加密的SharedPreferences存储敏感数据
+ */
 class SecurePrefs(context: Context) {
   companion object {
     val defaultWakeWords: List<String> = listOf("clawd", "claude")
@@ -22,7 +26,6 @@ class SecurePrefs(context: Context) {
   }
 
   private val json = Json { ignoreUnknownKeys = true }
-
   private val masterKey =
     MasterKey.Builder(context)
       .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -37,16 +40,20 @@ class SecurePrefs(context: Context) {
       EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
     )
 
+  // 实例ID
   private val _instanceId = MutableStateFlow(loadOrCreateInstanceId())
   val instanceId: StateFlow<String> = _instanceId
 
+  // 显示名称
   private val _displayName =
     MutableStateFlow(loadOrMigrateDisplayName(context = context))
   val displayName: StateFlow<String> = _displayName
 
+  // 相机设置
   private val _cameraEnabled = MutableStateFlow(prefs.getBoolean("camera.enabled", true))
   val cameraEnabled: StateFlow<Boolean> = _cameraEnabled
 
+  // 位置设置
   private val _locationMode =
     MutableStateFlow(LocationMode.fromRawValue(prefs.getString("location.enabledMode", "off")))
   val locationMode: StateFlow<LocationMode> = _locationMode
@@ -55,9 +62,11 @@ class SecurePrefs(context: Context) {
     MutableStateFlow(prefs.getBoolean("location.preciseEnabled", true))
   val locationPreciseEnabled: StateFlow<Boolean> = _locationPreciseEnabled
 
+  // 屏幕设置
   private val _preventSleep = MutableStateFlow(prefs.getBoolean("screen.preventSleep", true))
   val preventSleep: StateFlow<Boolean> = _preventSleep
 
+  // 手动网关设置
   private val _manualEnabled =
     MutableStateFlow(readBoolWithMigration("gateway.manual.enabled", "bridge.manual.enabled", false))
   val manualEnabled: StateFlow<Boolean> = _manualEnabled
@@ -84,19 +93,23 @@ class SecurePrefs(context: Context) {
     )
   val lastDiscoveredStableId: StateFlow<String> = _lastDiscoveredStableId
 
+  // Canvas设置
   private val _canvasDebugStatusEnabled =
     MutableStateFlow(prefs.getBoolean("canvas.debugStatusEnabled", false))
   val canvasDebugStatusEnabled: StateFlow<Boolean> = _canvasDebugStatusEnabled
 
+  // 语音唤醒设置
   private val _wakeWords = MutableStateFlow(loadWakeWords())
   val wakeWords: StateFlow<List<String>> = _wakeWords
 
   private val _voiceWakeMode = MutableStateFlow(loadVoiceWakeMode())
   val voiceWakeMode: StateFlow<VoiceWakeMode> = _voiceWakeMode
 
+  // 对话设置
   private val _talkEnabled = MutableStateFlow(prefs.getBoolean("talk.enabled", false))
   val talkEnabled: StateFlow<Boolean> = _talkEnabled
 
+  // 设置方法
   fun setLastDiscoveredStableId(value: String) {
     val trimmed = value.trim()
     prefs.edit { putString("gateway.lastDiscoveredStableID", trimmed) }
@@ -155,6 +168,7 @@ class SecurePrefs(context: Context) {
     _canvasDebugStatusEnabled.value = value
   }
 
+  // 网关认证方法
   fun loadGatewayToken(): String? {
     val key = "gateway.token.${_instanceId.value}"
     val stored = prefs.getString(key, null)?.trim()
@@ -189,6 +203,7 @@ class SecurePrefs(context: Context) {
     prefs.edit { putString(key, fingerprint.trim()) }
   }
 
+  // 通用存储方法
   fun getString(key: String): String? {
     return prefs.getString(key, null)
   }
@@ -201,6 +216,7 @@ class SecurePrefs(context: Context) {
     prefs.edit { remove(key) }
   }
 
+  // 私有辅助方法
   private fun loadOrCreateInstanceId(): String {
     val existing = prefs.getString("node.instanceId", null)?.trim()
     if (!existing.isNullOrBlank()) return existing
@@ -211,11 +227,9 @@ class SecurePrefs(context: Context) {
 
   private fun loadOrMigrateDisplayName(context: Context): String {
     val existing = prefs.getString(displayNameKey, null)?.trim().orEmpty()
-    if (existing.isNotEmpty() && existing != "Android Node") return existing
-
+    if (existing.isNotEmpty() && existing != "Android 节点") return existing
     val candidate = DeviceNames.bestDefaultNodeName(context).trim()
-    val resolved = candidate.ifEmpty { "Android Node" }
-
+    val resolved = candidate.ifEmpty { "Android 节点" }
     prefs.edit { putString(displayNameKey, resolved) }
     return resolved
   }
@@ -241,12 +255,10 @@ class SecurePrefs(context: Context) {
   private fun loadVoiceWakeMode(): VoiceWakeMode {
     val raw = prefs.getString(voiceWakeModeKey, null)
     val resolved = VoiceWakeMode.fromRawValue(raw)
-
-    // Default ON (foreground) when unset.
+    // 默认为ON(前台)当未设置时
     if (raw.isNullOrBlank()) {
       prefs.edit { putString(voiceWakeModeKey, resolved.rawValue) }
     }
-
     return resolved
   }
 
@@ -270,6 +282,7 @@ class SecurePrefs(context: Context) {
     }
   }
 
+  // 迁移辅助方法
   private fun readBoolWithMigration(newKey: String, oldKey: String?, defaultValue: Boolean): Boolean {
     if (prefs.contains(newKey)) {
       return prefs.getBoolean(newKey, defaultValue)

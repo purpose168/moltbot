@@ -1,18 +1,38 @@
 import Foundation
 
+/// 有效连接模式来源
+/// 
+/// 表示连接模式的来源
 enum EffectiveConnectionModeSource: Sendable, Equatable {
+    /// 配置模式
     case configMode
+    /// 配置远程URL
     case configRemoteURL
+    /// 用户默认设置
     case userDefaults
+    /// 引导流程
     case onboarding
 }
 
+/// 有效连接模式
+/// 
+/// 包含连接模式和其来源
 struct EffectiveConnectionMode: Sendable, Equatable {
+    /// 连接模式
     let mode: AppState.ConnectionMode
+    /// 来源
     let source: EffectiveConnectionModeSource
 }
 
+/// 连接模式解析器
+/// 
+/// 用于解析应用程序的连接模式
 enum ConnectionModeResolver {
+    /// 解析连接模式
+    /// - Parameters:
+    ///   - root: 配置根字典
+    ///   - defaults: 用户默认设置，默认为标准用户默认设置
+    /// - Returns: 有效连接模式
     static func resolve(
         root: [String: Any],
         defaults: UserDefaults = .standard) -> EffectiveConnectionMode

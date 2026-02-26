@@ -1,20 +1,20 @@
 ---
-summary: "Agent tool surface for Moltbot (browser, canvas, nodes, message, cron) replacing legacy `moltbot-*` skills"
+summary: "Moltbot 的智能体工具表面（浏览器、画布、节点、消息、定时任务），替代旧版 `moltbot-*` 技能"
 read_when:
-  - Adding or modifying agent tools
-  - Retiring or changing `moltbot-*` skills
+  - 添加或修改智能体工具
+  - 淘汰或更改 `moltbot-*` 技能
 ---
 
-# Tools (Moltbot)
+# 工具（Moltbot）
 
-Moltbot exposes **first-class agent tools** for browser, canvas, nodes, and cron.
-These replace the old `moltbot-*` skills: the tools are typed, no shelling,
-and the agent should rely on them directly.
+Moltbot 为浏览器、画布、节点和定时任务提供**一流的智能体工具**。
+这些工具替代了旧的 `moltbot-*` 技能：它们是类型化的，无需 shell 操作，
+智能体应该直接依赖它们。
 
-## Disabling tools
+## 禁用工具
 
-You can globally allow/deny tools via `tools.allow` / `tools.deny` in `moltbot.json`
-(deny wins). This prevents disallowed tools from being sent to model providers.
+您可以通过 `moltbot.json` 中的 `tools.allow` / `tools.deny` 全局允许/拒绝工具
+（拒绝优先）。这可以防止被拒绝的工具被发送到模型提供商。
 
 ```json5
 {
@@ -22,23 +22,23 @@ You can globally allow/deny tools via `tools.allow` / `tools.deny` in `moltbot.j
 }
 ```
 
-Notes:
-- Matching is case-insensitive.
-- `*` wildcards are supported (`"*"` means all tools).
-- If `tools.allow` only references unknown or unloaded plugin tool names, Moltbot logs a warning and ignores the allowlist so core tools stay available.
+注意：
+- 匹配不区分大小写。
+- 支持 `*` 通配符（`"*"` 表示所有工具）。
+- 如果 `tools.allow` 仅引用未知或未加载的插件工具名称，Moltbot 会记录警告并忽略允许列表，以便核心工具保持可用。
 
-## Tool profiles (base allowlist)
+## 工具配置文件（基础允许列表）
 
-`tools.profile` sets a **base tool allowlist** before `tools.allow`/`tools.deny`.
-Per-agent override: `agents.list[].tools.profile`.
+`tools.profile` 在 `tools.allow`/`tools.deny` 之前设置**基础工具允许列表**。
+每个智能体覆盖：`agents.list[].tools.profile`。
 
-Profiles:
-- `minimal`: `session_status` only
-- `coding`: `group:fs`, `group:runtime`, `group:sessions`, `group:memory`, `image`
-- `messaging`: `group:messaging`, `sessions_list`, `sessions_history`, `sessions_send`, `session_status`
-- `full`: no restriction (same as unset)
+配置文件：
+- `minimal`：仅 `session_status`
+- `coding`：`group:fs`、`group:runtime`、`group:sessions`、`group:memory`、`image`
+- `messaging`：`group:messaging`、`sessions_list`、`sessions_history`、`sessions_send`、`session_status`
+- `full`：无限制（与未设置相同）
 
-Example (messaging-only by default, allow Slack + Discord tools too):
+示例（默认仅消息传递，也允许 Slack + Discord 工具）：
 ```json5
 {
   tools: {
@@ -48,7 +48,7 @@ Example (messaging-only by default, allow Slack + Discord tools too):
 }
 ```
 
-Example (coding profile, but deny exec/process everywhere):
+示例（编码配置文件，但在各处拒绝 exec/process）：
 ```json5
 {
   tools: {
@@ -58,7 +58,7 @@ Example (coding profile, but deny exec/process everywhere):
 }
 ```
 
-Example (global coding profile, messaging-only support agent):
+示例（全局编码配置文件，仅消息传递支持智能体）：
 ```json5
 {
   tools: { profile: "coding" },
@@ -73,18 +73,18 @@ Example (global coding profile, messaging-only support agent):
 }
 ```
 
-## Provider-specific tool policy
+## 提供商特定的工具策略
 
-Use `tools.byProvider` to **further restrict** tools for specific providers
-(or a single `provider/model`) without changing your global defaults.
-Per-agent override: `agents.list[].tools.byProvider`.
+使用 `tools.byProvider` 来**进一步限制**特定提供商的工具
+（或单个 `provider/model`），而不更改全局默认值。
+每个智能体覆盖：`agents.list[].tools.byProvider`。
 
-This is applied **after** the base tool profile and **before** allow/deny lists,
-so it can only narrow the tool set.
-Provider keys accept either `provider` (e.g. `google-antigravity`) or
-`provider/model` (e.g. `openai/gpt-5.2`).
+这在基础工具配置文件**之后**和允许/拒绝列表**之前**应用，
+因此它只能缩小工具集。
+提供商键接受 `provider`（例如 `google-antigravity`）或
+`provider/model`（例如 `openai/gpt-5.2`）。
 
-Example (keep global coding profile, but minimal tools for Google Antigravity):
+示例（保持全局编码配置文件，但为 Google Antigravity 提供最小工具集）：
 ```json5
 {
   tools: {
@@ -96,7 +96,7 @@ Example (keep global coding profile, but minimal tools for Google Antigravity):
 }
 ```
 
-Example (provider/model-specific allowlist for a flaky endpoint):
+示例（针对不稳定端点的提供商/模型特定允许列表）：
 ```json5
 {
   tools: {
@@ -108,7 +108,7 @@ Example (provider/model-specific allowlist for a flaky endpoint):
 }
 ```
 
-Example (agent-specific override for a single provider):
+示例（单个提供商的智能体特定覆盖）：
 ```json5
 {
   agents: {
@@ -126,24 +126,24 @@ Example (agent-specific override for a single provider):
 }
 ```
 
-## Tool groups (shorthands)
+## 工具组（简写）
 
-Tool policies (global, agent, sandbox) support `group:*` entries that expand to multiple tools.
-Use these in `tools.allow` / `tools.deny`.
+工具策略（全局、智能体、沙箱）支持 `group:*` 条目，这些条目会展开为多个工具。
+在 `tools.allow` / `tools.deny` 中使用这些。
 
-Available groups:
-- `group:runtime`: `exec`, `bash`, `process`
-- `group:fs`: `read`, `write`, `edit`, `apply_patch`
-- `group:sessions`: `sessions_list`, `sessions_history`, `sessions_send`, `sessions_spawn`, `session_status`
-- `group:memory`: `memory_search`, `memory_get`
-- `group:web`: `web_search`, `web_fetch`
-- `group:ui`: `browser`, `canvas`
-- `group:automation`: `cron`, `gateway`
-- `group:messaging`: `message`
-- `group:nodes`: `nodes`
-- `group:moltbot`: all built-in Moltbot tools (excludes provider plugins)
+可用组：
+- `group:runtime`：`exec`、`bash`、`process`
+- `group:fs`：`read`、`write`、`edit`、`apply_patch`
+- `group:sessions`：`sessions_list`、`sessions_history`、`sessions_send`、`sessions_spawn`、`session_status`
+- `group:memory`：`memory_search`、`memory_get`
+- `group:web`：`web_search`、`web_fetch`
+- `group:ui`：`browser`、`canvas`
+- `group:automation`：`cron`、`gateway`
+- `group:messaging`：`message`
+- `group:nodes`：`nodes`
+- `group:moltbot`：所有内置 Moltbot 工具（不包括提供商插件）
 
-Example (allow only file tools + browser):
+示例（仅允许文件工具 + 浏览器）：
 ```json5
 {
   tools: {
@@ -152,154 +152,152 @@ Example (allow only file tools + browser):
 }
 ```
 
-## Plugins + tools
+## 插件 + 工具
 
-Plugins can register **additional tools** (and CLI commands) beyond the core set.
-See [Plugins](/plugin) for install + config, and [Skills](/tools/skills) for how
-tool usage guidance is injected into prompts. Some plugins ship their own skills
-alongside tools (for example, the voice-call plugin).
+插件可以注册**额外的工具**（和 CLI 命令），超出核心工具集。
+有关安装 + 配置，请参阅 [插件](/plugin)，有关工具使用指南如何注入到提示中，请参阅 [技能](/tools/skills)。一些插件会随工具一起提供自己的技能（例如，voice-call 插件）。
 
-Optional plugin tools:
-- [Lobster](/tools/lobster): typed workflow runtime with resumable approvals (requires the Lobster CLI on the gateway host).
-- [LLM Task](/tools/llm-task): JSON-only LLM step for structured workflow output (optional schema validation).
+可选插件工具：
+- [Lobster](/tools/lobster)：带有可恢复批准的类型化工作流运行时（需要网关节点上的 Lobster CLI）。
+- [LLM Task](/tools/llm-task)：仅 JSON 的 LLM 步骤，用于结构化工作流输出（可选模式验证）。
 
-## Tool inventory
+## 工具清单
 
 ### `apply_patch`
-Apply structured patches across one or more files. Use for multi-hunk edits.
-Experimental: enable via `tools.exec.applyPatch.enabled` (OpenAI models only).
+跨一个或多个文件应用结构化补丁。用于多块编辑。
+实验性：通过 `tools.exec.applyPatch.enabled` 启用（仅 OpenAI 模型）。
 
 ### `exec`
-Run shell commands in the workspace.
+在工作区中运行 shell 命令。
 
-Core parameters:
-- `command` (required)
-- `yieldMs` (auto-background after timeout, default 10000)
-- `background` (immediate background)
-- `timeout` (seconds; kills the process if exceeded, default 1800)
-- `elevated` (bool; run on host if elevated mode is enabled/allowed; only changes behavior when the agent is sandboxed)
-- `host` (`sandbox | gateway | node`)
-- `security` (`deny | allowlist | full`)
-- `ask` (`off | on-miss | always`)
-- `node` (node id/name for `host=node`)
-- Need a real TTY? Set `pty: true`.
+核心参数：
+- `command`（必需）
+- `yieldMs`（超时后自动后台运行，默认 10000）
+- `background`（立即后台运行）
+- `timeout`（秒；如果超过则终止进程，默认 1800）
+- `elevated`（布尔值；如果启用/允许提升模式，则在主机上运行；仅当智能体被沙箱化时才更改行为）
+- `host`（`sandbox | gateway | node`）
+- `security`（`deny | allowlist | full`）
+- `ask`（`off | on-miss | always`）
+- `node`（`host=node` 的节点 ID/名称）
+- 需要真实 TTY？设置 `pty: true`。
 
-Notes:
-- Returns `status: "running"` with a `sessionId` when backgrounded.
-- Use `process` to poll/log/write/kill/clear background sessions.
-- If `process` is disallowed, `exec` runs synchronously and ignores `yieldMs`/`background`.
-- `elevated` is gated by `tools.elevated` plus any `agents.list[].tools.elevated` override (both must allow) and is an alias for `host=gateway` + `security=full`.
-- `elevated` only changes behavior when the agent is sandboxed (otherwise it’s a no-op).
-- `host=node` can target a macOS companion app or a headless node host (`moltbot node run`).
-- gateway/node approvals and allowlists: [Exec approvals](/tools/exec-approvals).
+注意：
+- 后台运行时返回 `status: "running"` 和 `sessionId`。
+- 使用 `process` 轮询/日志/写入/终止/清除后台会话。
+- 如果 `process` 被拒绝，`exec` 同步运行并忽略 `yieldMs`/`background`。
+- `elevated` 由 `tools.elevated` 加上任何 `agents.list[].tools.elevated` 覆盖控制（两者都必须允许），并且是 `host=gateway` + `security=full` 的别名。
+- `elevated` 仅当智能体被沙箱化时才更改行为（否则无操作）。
+- `host=node` 可以 targeting macOS 配套应用或无头节点主机（`moltbot node run`）。
+- 网关/节点批准和允许列表：[Exec 批准](/tools/exec-approvals)。
 
 ### `process`
-Manage background exec sessions.
+管理后台 exec 会话。
 
-Core actions:
-- `list`, `poll`, `log`, `write`, `kill`, `clear`, `remove`
+核心操作：
+- `list`、`poll`、`log`、`write`、`kill`、`clear`、`remove`
 
-Notes:
-- `poll` returns new output and exit status when complete.
-- `log` supports line-based `offset`/`limit` (omit `offset` to grab the last N lines).
-- `process` is scoped per agent; sessions from other agents are not visible.
+注意：
+- `poll` 在完成时返回新输出和退出状态。
+- `log` 支持基于行的 `offset`/`limit`（省略 `offset` 以获取最后 N 行）。
+- `process` 按智能体作用域；其他智能体的会话不可见。
 
 ### `web_search`
-Search the web using Brave Search API.
+使用 Brave Search API 搜索网络。
 
-Core parameters:
-- `query` (required)
-- `count` (1–10; default from `tools.web.search.maxResults`)
+核心参数：
+- `query`（必需）
+- `count`（1–10；默认为 `tools.web.search.maxResults`）
 
-Notes:
-- Requires a Brave API key (recommended: `moltbot configure --section web`, or set `BRAVE_API_KEY`).
-- Enable via `tools.web.search.enabled`.
-- Responses are cached (default 15 min).
-- See [Web tools](/tools/web) for setup.
+注意：
+- 需要 Brave API 密钥（推荐：`moltbot configure --section web`，或设置 `BRAVE_API_KEY`）。
+- 通过 `tools.web.search.enabled` 启用。
+- 响应被缓存（默认 15 分钟）。
+- 有关设置，请参阅 [Web 工具](/tools/web)。
 
 ### `web_fetch`
-Fetch and extract readable content from a URL (HTML → markdown/text).
+从 URL 获取并提取可读内容（HTML → markdown/文本）。
 
-Core parameters:
-- `url` (required)
-- `extractMode` (`markdown` | `text`)
-- `maxChars` (truncate long pages)
+核心参数：
+- `url`（必需）
+- `extractMode`（`markdown` | `text`）
+- `maxChars`（截断长页面）
 
-Notes:
-- Enable via `tools.web.fetch.enabled`.
-- Responses are cached (default 15 min).
-- For JS-heavy sites, prefer the browser tool.
-- See [Web tools](/tools/web) for setup.
-- See [Firecrawl](/tools/firecrawl) for the optional anti-bot fallback.
+注意：
+- 通过 `tools.web.fetch.enabled` 启用。
+- 响应被缓存（默认 15 分钟）。
+- 对于 JS 密集型站点，首选浏览器工具。
+- 有关设置，请参阅 [Web 工具](/tools/web)。
+- 有关可选的反机器人回退，请参阅 [Firecrawl](/tools/firecrawl)。
 
 ### `browser`
-Control the dedicated clawd browser.
+控制专用的 clawd 浏览器。
 
-Core actions:
-- `status`, `start`, `stop`, `tabs`, `open`, `focus`, `close`
-- `snapshot` (aria/ai)
-- `screenshot` (returns image block + `MEDIA:<path>`)
-- `act` (UI actions: click/type/press/hover/drag/select/fill/resize/wait/evaluate)
-- `navigate`, `console`, `pdf`, `upload`, `dialog`
+核心操作：
+- `status`、`start`、`stop`、`tabs`、`open`、`focus`、`close`
+- `snapshot`（aria/ai）
+- `screenshot`（返回图像块 + `MEDIA:<path>`）
+- `act`（UI 操作：click/type/press/hover/drag/select/fill/resize/wait/evaluate）
+- `navigate`、`console`、`pdf`、`upload`、`dialog`
 
-Profile management:
-- `profiles` — list all browser profiles with status
-- `create-profile` — create new profile with auto-allocated port (or `cdpUrl`)
-- `delete-profile` — stop browser, delete user data, remove from config (local only)
-- `reset-profile` — kill orphan process on profile's port (local only)
+配置文件管理：
+- `profiles` — 列出所有浏览器配置文件及其状态
+- `create-profile` — 创建具有自动分配端口（或 `cdpUrl`）的新配置文件
+- `delete-profile` — 停止浏览器，删除用户数据，从配置中移除（仅本地）
+- `reset-profile` — 终止配置文件端口上的孤立进程（仅本地）
 
-Common parameters:
-- `profile` (optional; defaults to `browser.defaultProfile`)
-- `target` (`sandbox` | `host` | `node`)
-- `node` (optional; picks a specific node id/name)
-Notes:
-- Requires `browser.enabled=true` (default is `true`; set `false` to disable).
-- All actions accept optional `profile` parameter for multi-instance support.
-- When `profile` is omitted, uses `browser.defaultProfile` (defaults to "chrome").
-- Profile names: lowercase alphanumeric + hyphens only (max 64 chars).
-- Port range: 18800-18899 (~100 profiles max).
-- Remote profiles are attach-only (no start/stop/reset).
-- If a browser-capable node is connected, the tool may auto-route to it (unless you pin `target`).
-- `snapshot` defaults to `ai` when Playwright is installed; use `aria` for the accessibility tree.
-- `snapshot` also supports role-snapshot options (`interactive`, `compact`, `depth`, `selector`) which return refs like `e12`.
-- `act` requires `ref` from `snapshot` (numeric `12` from AI snapshots, or `e12` from role snapshots); use `evaluate` for rare CSS selector needs.
-- Avoid `act` → `wait` by default; use it only in exceptional cases (no reliable UI state to wait on).
-- `upload` can optionally pass a `ref` to auto-click after arming.
-- `upload` also supports `inputRef` (aria ref) or `element` (CSS selector) to set `<input type="file">` directly.
+常见参数：
+- `profile`（可选；默认为 `browser.defaultProfile`）
+- `target`（`sandbox` | `host` | `node`）
+- `node`（可选；选择特定节点 ID/名称）
+注意：
+- 需要 `browser.enabled=true`（默认值为 `true`；设置 `false` 以禁用）。
+- 所有操作都接受可选的 `profile` 参数以支持多实例。
+- 当省略 `profile` 时，使用 `browser.defaultProfile`（默认为 "chrome"）。
+- 配置文件名称：仅小写字母数字 + 连字符（最多 64 个字符）。
+- 端口范围：18800-18899（最多约 100 个配置文件）。
+- 远程配置文件仅支持附加（无启动/停止/重置）。
+- 如果连接了支持浏览器的节点，工具可能会自动路由到它（除非您固定 `target`）。
+- 安装 Playwright 时，`snapshot` 默认使用 `ai`；使用 `aria` 获取可访问性树。
+- `snapshot` 还支持角色快照选项（`interactive`、`compact`、`depth`、`selector`），返回类似 `e12` 的引用。
+- `act` 需要来自 `snapshot` 的 `ref`（AI 快照中的数字 `12`，或角色快照中的 `e12`）；对于罕见的 CSS 选择器需求，使用 `evaluate`。
+- 默认情况下避免 `act` → `wait`；仅在特殊情况下使用（无可靠的 UI 状态可等待）。
+- `upload` 可以选择传递 `ref` 以在准备后自动点击。
+- `upload` 还支持 `inputRef`（aria 引用）或 `element`（CSS 选择器）直接设置 `<input type="file">`。
 
 ### `canvas`
-Drive the node Canvas (present, eval, snapshot, A2UI).
+驱动节点画布（呈现、评估、快照、A2UI）。
 
-Core actions:
-- `present`, `hide`, `navigate`, `eval`
-- `snapshot` (returns image block + `MEDIA:<path>`)
-- `a2ui_push`, `a2ui_reset`
+核心操作：
+- `present`、`hide`、`navigate`、`eval`
+- `snapshot`（返回图像块 + `MEDIA:<path>`）
+- `a2ui_push`、`a2ui_reset`
 
-Notes:
-- Uses gateway `node.invoke` under the hood.
-- If no `node` is provided, the tool picks a default (single connected node or local mac node).
-- A2UI is v0.8 only (no `createSurface`); the CLI rejects v0.9 JSONL with line errors.
-- Quick smoke: `moltbot nodes canvas a2ui push --node <id> --text "Hello from A2UI"`.
+注意：
+- 在底层使用网关 `node.invoke`。
+- 如果未提供 `node`，工具会选择默认节点（单个连接节点或本地 mac 节点）。
+- A2UI 仅支持 v0.8（无 `createSurface`）；CLI 会拒绝 v0.9 JSONL 并显示行错误。
+- 快速测试：`moltbot nodes canvas a2ui push --node <id> --text "Hello from A2UI"`。
 
 ### `nodes`
-Discover and target paired nodes; send notifications; capture camera/screen.
+发现并 targeting 配对节点；发送通知；捕获摄像头/屏幕。
 
-Core actions:
-- `status`, `describe`
-- `pending`, `approve`, `reject` (pairing)
-- `notify` (macOS `system.notify`)
-- `run` (macOS `system.run`)
-- `camera_snap`, `camera_clip`, `screen_record`
+核心操作：
+- `status`、`describe`
+- `pending`、`approve`、`reject`（配对）
+- `notify`（macOS `system.notify`）
+- `run`（macOS `system.run`）
+- `camera_snap`、`camera_clip`、`screen_record`
 - `location_get`
 
-Notes:
-- Camera/screen commands require the node app to be foregrounded.
-- Images return image blocks + `MEDIA:<path>`.
-- Videos return `FILE:<path>` (mp4).
-- Location returns a JSON payload (lat/lon/accuracy/timestamp).
-- `run` params: `command` argv array; optional `cwd`, `env` (`KEY=VAL`), `commandTimeoutMs`, `invokeTimeoutMs`, `needsScreenRecording`.
+注意：
+- 摄像头/屏幕命令要求节点应用程序在前台运行。
+- 图像返回图像块 + `MEDIA:<path>`。
+- 视频返回 `FILE:<path>`（mp4）。
+- 位置返回 JSON 负载（lat/lon/accuracy/timestamp）。
+- `run` 参数：`command` argv 数组；可选 `cwd`、`env`（`KEY=VAL`）、`commandTimeoutMs`、`invokeTimeoutMs`、`needsScreenRecording`。
 
-Example (`run`):
+示例（`run`）：
 ```json
 {
   "action": "run",
@@ -313,24 +311,24 @@ Example (`run`):
 ```
 
 ### `image`
-Analyze an image with the configured image model.
+使用配置的图像模型分析图像。
 
-Core parameters:
-- `image` (required path or URL)
-- `prompt` (optional; defaults to "Describe the image.")
-- `model` (optional override)
-- `maxBytesMb` (optional size cap)
+核心参数：
+- `image`（必需路径或 URL）
+- `prompt`（可选；默认为 "Describe the image."）
+- `model`（可选覆盖）
+- `maxBytesMb`（可选大小上限）
 
-Notes:
-- Only available when `agents.defaults.imageModel` is configured (primary or fallbacks), or when an implicit image model can be inferred from your default model + configured auth (best-effort pairing).
-- Uses the image model directly (independent of the main chat model).
+注意：
+- 仅当配置了 `agents.defaults.imageModel`（主模型或回退模型）时可用，或者当可以从默认模型 + 配置的认证中推断出隐式图像模型时（尽力配对）。
+- 直接使用图像模型（独立于主聊天模型）。
 
 ### `message`
-Send messages and channel actions across Discord/Google Chat/Slack/Telegram/WhatsApp/Signal/iMessage/MS Teams.
+跨 Discord/Google Chat/Slack/Telegram/WhatsApp/Signal/iMessage/MS Teams 发送消息和频道操作。
 
-Core actions:
-- `send` (text + optional media; MS Teams also supports `card` for Adaptive Cards)
-- `poll` (WhatsApp/Discord/MS Teams polls)
+核心操作：
+- `send`（文本 + 可选媒体；MS Teams 还支持 `card` 用于自适应卡片）
+- `poll`（WhatsApp/Discord/MS Teams 投票）
 - `react` / `reactions` / `read` / `edit` / `delete`
 - `pin` / `unpin` / `list-pins`
 - `permissions`
@@ -345,106 +343,106 @@ Core actions:
 - `event-list` / `event-create`
 - `timeout` / `kick` / `ban`
 
-Notes:
-- `send` routes WhatsApp via the Gateway; other channels go direct.
-- `poll` uses the Gateway for WhatsApp and MS Teams; Discord polls go direct.
-- When a message tool call is bound to an active chat session, sends are constrained to that session’s target to avoid cross-context leaks.
+注意：
+- `send` 通过网关路由 WhatsApp；其他频道直接发送。
+- `poll` 对 WhatsApp 和 MS Teams 使用网关；Discord 投票直接发送。
+- 当消息工具调用绑定到活动聊天会话时，发送被限制在该会话的目标上，以避免跨上下文泄漏。
 
 ### `cron`
-Manage Gateway cron jobs and wakeups.
+管理网关定时任务和唤醒。
 
-Core actions:
-- `status`, `list`
-- `add`, `update`, `remove`, `run`, `runs`
-- `wake` (enqueue system event + optional immediate heartbeat)
+核心操作：
+- `status`、`list`
+- `add`、`update`、`remove`、`run`、`runs`
+- `wake`（入队系统事件 + 可选立即心跳）
 
-Notes:
-- `add` expects a full cron job object (same schema as `cron.add` RPC).
-- `update` uses `{ id, patch }`.
+注意：
+- `add` 需要完整的定时任务对象（与 `cron.add` RPC 相同的架构）。
+- `update` 使用 `{ id, patch }`。
 
 ### `gateway`
-Restart or apply updates to the running Gateway process (in-place).
+重启或对运行中的网关进程应用更新（就地）。
 
-Core actions:
-- `restart` (authorizes + sends `SIGUSR1` for in-process restart; `moltbot gateway` restart in-place)
+核心操作：
+- `restart`（授权 + 发送 `SIGUSR1` 进行进程内重启；`moltbot gateway` 就地重启）
 - `config.get` / `config.schema`
-- `config.apply` (validate + write config + restart + wake)
-- `config.patch` (merge partial update + restart + wake)
-- `update.run` (run update + restart + wake)
+- `config.apply`（验证 + 写入配置 + 重启 + 唤醒）
+- `config.patch`（合并部分更新 + 重启 + 唤醒）
+- `update.run`（运行更新 + 重启 + 唤醒）
 
-Notes:
-- Use `delayMs` (defaults to 2000) to avoid interrupting an in-flight reply.
-- `restart` is disabled by default; enable with `commands.restart: true`.
+注意：
+- 使用 `delayMs`（默认为 2000）以避免中断正在进行的回复。
+- `restart` 默认禁用；通过 `commands.restart: true` 启用。
 
 ### `sessions_list` / `sessions_history` / `sessions_send` / `sessions_spawn` / `session_status`
-List sessions, inspect transcript history, or send to another session.
+列出会话，检查记录历史，或发送到另一个会话。
 
-Core parameters:
-- `sessions_list`: `kinds?`, `limit?`, `activeMinutes?`, `messageLimit?` (0 = none)
-- `sessions_history`: `sessionKey` (or `sessionId`), `limit?`, `includeTools?`
-- `sessions_send`: `sessionKey` (or `sessionId`), `message`, `timeoutSeconds?` (0 = fire-and-forget)
-- `sessions_spawn`: `task`, `label?`, `agentId?`, `model?`, `runTimeoutSeconds?`, `cleanup?`
-- `session_status`: `sessionKey?` (default current; accepts `sessionId`), `model?` (`default` clears override)
+核心参数：
+- `sessions_list`：`kinds?`、`limit?`、`activeMinutes?`、`messageLimit?`（0 = 无）
+- `sessions_history`：`sessionKey`（或 `sessionId`）、`limit?`、`includeTools?`
+- `sessions_send`：`sessionKey`（或 `sessionId`）、`message`、`timeoutSeconds?`（0 = 即发即忘）
+- `sessions_spawn`：`task`、`label?`、`agentId?`、`model?`、`runTimeoutSeconds?`、`cleanup?`
+- `session_status`：`sessionKey?`（默认为当前；接受 `sessionId`）、`model?`（`default` 清除覆盖）
 
-Notes:
-- `main` is the canonical direct-chat key; global/unknown are hidden.
-- `messageLimit > 0` fetches last N messages per session (tool messages filtered).
-- `sessions_send` waits for final completion when `timeoutSeconds > 0`.
-- Delivery/announce happens after completion and is best-effort; `status: "ok"` confirms the agent run finished, not that the announce was delivered.
-- `sessions_spawn` starts a sub-agent run and posts an announce reply back to the requester chat.
-- `sessions_spawn` is non-blocking and returns `status: "accepted"` immediately.
-- `sessions_send` runs a reply‑back ping‑pong (reply `REPLY_SKIP` to stop; max turns via `session.agentToAgent.maxPingPongTurns`, 0–5).
-- After the ping‑pong, the target agent runs an **announce step**; reply `ANNOUNCE_SKIP` to suppress the announcement.
+注意：
+- `main` 是规范的直接聊天键；全局/未知会话被隐藏。
+- `messageLimit > 0` 每个会话获取最后 N 条消息（工具消息被过滤）。
+- 当 `timeoutSeconds > 0` 时，`sessions_send` 等待最终完成。
+- 传递/公告在完成后进行，尽力而为；`status: "ok"` 确认智能体运行完成，而不是公告已传递。
+- `sessions_spawn` 启动子智能体运行并向请求者聊天发布公告回复。
+- `sessions_spawn` 是非阻塞的，立即返回 `status: "accepted"`。
+- `sessions_send` 运行回复-回 ping-pong（回复 `REPLY_SKIP` 停止；最大轮次通过 `session.agentToAgent.maxPingPongTurns`，0–5）。
+- ping-pong 后，目标智能体运行**公告步骤**；回复 `ANNOUNCE_SKIP` 以抑制公告。
 
 ### `agents_list`
-List agent ids that the current session may target with `sessions_spawn`.
+列出当前会话可以使用 `sessions_spawn` 目标的智能体 ID。
 
-Notes:
-- Result is restricted to per-agent allowlists (`agents.list[].subagents.allowAgents`).
-- When `["*"]` is configured, the tool includes all configured agents and marks `allowAny: true`.
+注意：
+- 结果受每个智能体允许列表的限制（`agents.list[].subagents.allowAgents`）。
+- 当配置为 `["*"]` 时，工具包含所有配置的智能体并标记 `allowAny: true`。
 
-## Parameters (common)
+## 参数（通用）
 
-Gateway-backed tools (`canvas`, `nodes`, `cron`):
-- `gatewayUrl` (default `ws://127.0.0.1:18789`)
-- `gatewayToken` (if auth enabled)
+网关支持的工具（`canvas`、`nodes`、`cron`）：
+- `gatewayUrl`（默认 `ws://127.0.0.1:18789`）
+- `gatewayToken`（如果启用了认证）
 - `timeoutMs`
 
-Browser tool:
-- `profile` (optional; defaults to `browser.defaultProfile`)
-- `target` (`sandbox` | `host` | `node`)
-- `node` (optional; pin a specific node id/name)
+浏览器工具：
+- `profile`（可选；默认为 `browser.defaultProfile`）
+- `target`（`sandbox` | `host` | `node`）
+- `node`（可选；固定特定节点 ID/名称）
 
-## Recommended agent flows
+## 推荐的智能体流程
 
-Browser automation:
+浏览器自动化：
 1) `browser` → `status` / `start`
-2) `snapshot` (ai or aria)
-3) `act` (click/type/press)
-4) `screenshot` if you need visual confirmation
+2) `snapshot`（ai 或 aria）
+3) `act`（click/type/press）
+4) `screenshot`（如果需要视觉确认）
 
-Canvas render:
+画布渲染：
 1) `canvas` → `present`
-2) `a2ui_push` (optional)
+2) `a2ui_push`（可选）
 3) `snapshot`
 
-Node targeting:
+节点 targeting：
 1) `nodes` → `status`
-2) `describe` on the chosen node
+2) 在选定节点上 `describe`
 3) `notify` / `run` / `camera_snap` / `screen_record`
 
-## Safety
+## 安全
 
-- Avoid direct `system.run`; use `nodes` → `run` only with explicit user consent.
-- Respect user consent for camera/screen capture.
-- Use `status/describe` to ensure permissions before invoking media commands.
+- 避免直接 `system.run`；仅在获得明确用户同意后使用 `nodes` → `run`。
+- 尊重用户对摄像头/屏幕捕获的同意。
+- 在调用媒体命令前使用 `status/describe` 确保权限。
 
-## How tools are presented to the agent
+## 工具如何呈现给智能体
 
-Tools are exposed in two parallel channels:
+工具通过两个并行通道暴露：
 
-1) **System prompt text**: a human-readable list + guidance.
-2) **Tool schema**: the structured function definitions sent to the model API.
+1) **系统提示文本**：人类可读的列表 + 指南。
+2) **工具模式**：发送到模型 API 的结构化函数定义。
 
-That means the agent sees both “what tools exist” and “how to call them.” If a tool
-doesn’t appear in the system prompt or the schema, the model cannot call it.
+这意味着智能体同时看到"存在什么工具"和"如何调用它们"。如果工具
+没有出现在系统提示或模式中，模型就无法调用它。

@@ -17,6 +17,10 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
+/**
+ * 屏幕捕获请求器
+ * 负责请求屏幕录制权限
+ */
 class ScreenCaptureRequester(private val activity: ComponentActivity) {
   data class CaptureResult(val resultCode: Int, val data: Intent)
 
@@ -35,6 +39,11 @@ class ScreenCaptureRequester(private val activity: ComponentActivity) {
       }
     }
 
+  /**
+   * 请求屏幕捕获
+   * @param timeoutMs 超时时间(毫秒)
+   * @return 捕获结果,如果被拒绝则返回null
+   */
   suspend fun requestCapture(timeoutMs: Long = 20_000): CaptureResult? =
     mutex.withLock {
       val proceed = showRationaleDialog()
@@ -46,18 +55,20 @@ class ScreenCaptureRequester(private val activity: ComponentActivity) {
       val deferred = CompletableDeferred<CaptureResult?>()
       pending = deferred
       withContext(Dispatchers.Main) { launcher.launch(intent) }
-
       withContext(Dispatchers.Default) { withTimeout(timeoutMs) { deferred.await() } }
     }
 
+  /**
+   * 显示权限说明对话框
+   */
   private suspend fun showRationaleDialog(): Boolean =
     withContext(Dispatchers.Main) {
       suspendCancellableCoroutine { cont ->
         AlertDialog.Builder(activity)
-          .setTitle("Screen recording required")
-          .setMessage("Moltbot needs to record the screen for this command.")
-          .setPositiveButton("Continue") { _, _ -> cont.resume(true) }
-          .setNegativeButton("Not now") { _, _ -> cont.resume(false) }
+          .setTitle("需要屏幕录制")
+          .setMessage("Moltbot 需要录制屏幕以执行此命令。")
+          .setPositiveButton("继续") { _, _ -> cont.resume(true) }
+          .setNegativeButton("暂不") { _, _ -> cont.resume(false) }
           .setOnCancelListener { cont.resume(false) }
           .show()
       }

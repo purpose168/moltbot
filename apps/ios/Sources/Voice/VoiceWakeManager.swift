@@ -6,7 +6,7 @@ import SwabbleKit
 
 private func makeAudioTapEnqueueCallback(queue: AudioBufferQueue) -> @Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void {
     { buffer, _ in
-        // This callback is invoked on a realtime audio thread/queue. Keep it tiny and nonisolated.
+        // 此回调在实时音频线程/队列上调用。保持其简洁且非隔离。
         queue.enqueueCopy(of: buffer)
     }
 }
@@ -82,7 +82,7 @@ extension AVAudioPCMBuffer {
 final class VoiceWakeManager: NSObject {
     var isEnabled: Bool = false
     var isListening: Bool = false
-    var statusText: String = "Off"
+    var statusText: String = "关闭"
     var triggerWords: [String] = VoiceWakePreferences.loadTriggerWords()
     var lastTriggeredCommand: String?
 
@@ -148,32 +148,32 @@ final class VoiceWakeManager: NSObject {
         if ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil ||
             ProcessInfo.processInfo.environment["SIMULATOR_UDID"] != nil
         {
-            // The iOS Simulator’s audio stack is unreliable for long-running microphone capture.
-            // (We’ve observed CoreAudio deadlocks after TCC permission prompts.)
+            // iOS 模拟器的音频栈对于长时间运行的麦克风捕获不可靠。
+            // (我们观察到在 TCC 权限提示后会出现 CoreAudio 死锁。)
             self.isListening = false
-            self.statusText = "Voice Wake isn’t supported on Simulator"
+            self.statusText = "语音唤醒在模拟器上不受支持"
             return
         }
 
-        self.statusText = "Requesting permissions…"
+        self.statusText = "正在请求权限..."
 
         let micOk = await Self.requestMicrophonePermission()
         guard micOk else {
-            self.statusText = "Microphone permission denied"
+            self.statusText = "麦克风权限被拒绝"
             self.isListening = false
             return
         }
 
         let speechOk = await Self.requestSpeechPermission()
         guard speechOk else {
-            self.statusText = "Speech recognition permission denied"
+            self.statusText = "语音识别权限被拒绝"
             self.isListening = false
             return
         }
 
         self.speechRecognizer = SFSpeechRecognizer()
         guard self.speechRecognizer != nil else {
-            self.statusText = "Speech recognizer unavailable"
+            self.statusText = "语音识别器不可用"
             self.isListening = false
             return
         }
@@ -182,17 +182,17 @@ final class VoiceWakeManager: NSObject {
             try Self.configureAudioSession()
             try self.startRecognition()
             self.isListening = true
-            self.statusText = "Listening"
+            self.statusText = "正在监听"
         } catch {
             self.isListening = false
-            self.statusText = "Start failed: \(error.localizedDescription)"
+            self.statusText = "启动失败: \(error.localizedDescription)"
         }
     }
 
     func stop() {
         self.isEnabled = false
         self.isListening = false
-        self.statusText = "Off"
+        self.statusText = "关闭"
 
         self.tapDrainTask?.cancel()
         self.tapDrainTask = nil
@@ -211,13 +211,13 @@ final class VoiceWakeManager: NSObject {
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
-    /// Temporarily releases the microphone so other subsystems (e.g. camera video capture) can record audio.
-    /// Returns `true` when listening was active and was suspended.
+    /// 临时释放麦克风，以便其他子系统（例如相机视频捕获）可以录制音频。
+    /// 当监听处于活动状态并被挂起时返回 `true`。
     func suspendForExternalAudioCapture() -> Bool {
         guard self.isEnabled, self.isListening else { return false }
 
         self.isListening = false
-        self.statusText = "Paused"
+        self.statusText = "已暂停"
 
         self.tapDrainTask?.cancel()
         self.tapDrainTask = nil
@@ -303,7 +303,7 @@ final class VoiceWakeManager: NSObject {
 
     private func handleRecognitionCallback(transcript: String?, segments: [WakeWordSegment], errorText: String?) {
         if let errorText {
-            self.statusText = "Recognizer error: \(errorText)"
+            self.statusText = "识别器错误: \(errorText)"
             self.isListening = false
 
             let shouldRestart = self.isEnabled
@@ -322,7 +322,7 @@ final class VoiceWakeManager: NSObject {
         if cmd == self.lastDispatched { return }
         self.lastDispatched = cmd
         self.lastTriggeredCommand = cmd
-        self.statusText = "Triggered"
+        self.statusText = "已触发"
 
         Task { [weak self] in
             guard let self else { return }

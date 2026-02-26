@@ -98,7 +98,7 @@ fun ChatTypingIndicatorBubble() {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
       ) {
         DotPulse()
-        Text("Thinking…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("思考中…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
       }
     }
   }

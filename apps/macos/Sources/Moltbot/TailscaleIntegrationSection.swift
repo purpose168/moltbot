@@ -1,28 +1,29 @@
 import SwiftUI
 
+/// 网关 Tailscale 模式枚举
 private enum GatewayTailscaleMode: String, CaseIterable, Identifiable {
-    case off
-    case serve
-    case funnel
+    case off        // 关闭
+    case serve      // Tailnet 服务
+    case funnel     // 公共 Funnel
 
     var id: String { self.rawValue }
 
     var label: String {
         switch self {
-        case .off: "Off"
-        case .serve: "Tailnet (Serve)"
-        case .funnel: "Public (Funnel)"
+        case .off: "关闭"
+        case .serve: "Tailnet (服务)"
+        case .funnel: "公共 (Funnel)"
         }
     }
 
     var description: String {
         switch self {
         case .off:
-            "No automatic Tailscale configuration."
+            "无自动 Tailscale 配置。"
         case .serve:
-            "Tailnet-only HTTPS via Tailscale Serve."
+            "通过 Tailscale Serve 提供 Tailnet 专用 HTTPS。"
         case .funnel:
-            "Public HTTPS via Tailscale Funnel (requires auth)."
+            "通过 Tailscale Funnel 提供公共 HTTPS（需要认证）。"
         }
     }
 }
@@ -62,7 +63,7 @@ struct TailscaleIntegrationSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Tailscale (dashboard access)")
+            Text("Tailscale (仪表板访问)")
                 .font(.callout.weight(.semibold))
 
             self.statusRow
@@ -83,7 +84,7 @@ struct TailscaleIntegrationSection: View {
             }
 
             if self.connectionMode != .local {
-                Text("Local mode required. Update settings on the gateway host.")
+                Text("需要本地模式。请在网关主机上更新设置。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -128,7 +129,7 @@ struct TailscaleIntegrationSection: View {
             Text(self.statusText)
                 .font(.callout)
             Spacer()
-            Button("Refresh") {
+            Button("刷新") {
                 Task { await self.effectiveService.checkTailscaleStatus() }
             }
             .buttonStyle(.bordered)
@@ -143,18 +144,18 @@ struct TailscaleIntegrationSection: View {
     }
 
     private var statusText: String {
-        if !self.effectiveService.isInstalled { return "Tailscale is not installed" }
-        if self.effectiveService.isRunning { return "Tailscale is installed and running" }
-        return "Tailscale is installed but not running"
+        if !self.effectiveService.isInstalled { return "未安装 Tailscale" }
+        if self.effectiveService.isRunning { return "Tailscale 已安装并运行" }
+        return "Tailscale 已安装但未运行"
     }
 
     private var installButtons: some View {
         HStack(spacing: 12) {
             Button("App Store") { self.effectiveService.openAppStore() }
                 .buttonStyle(.link)
-            Button("Direct Download") { self.effectiveService.openDownloadPage() }
+            Button("直接下载") { self.effectiveService.openDownloadPage() }
                 .buttonStyle(.link)
-            Button("Setup Guide") { self.effectiveService.openSetupGuide() }
+            Button("设置指南") { self.effectiveService.openSetupGuide() }
                 .buttonStyle(.link)
         }
         .controlSize(.small)
@@ -162,9 +163,9 @@ struct TailscaleIntegrationSection: View {
 
     private var modePicker: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Exposure mode")
+            Text("暴露模式")
                 .font(.callout.weight(.semibold))
-            Picker("Exposure", selection: self.$tailscaleMode) {
+            Picker("暴露", selection: self.$tailscaleMode) {
                 ForEach(GatewayTailscaleMode.allCases) { mode in
                     Text(mode.label).tag(mode)
                 }
@@ -181,7 +182,7 @@ struct TailscaleIntegrationSection: View {
         if let host = self.effectiveService.tailscaleHostname {
             let url = "https://\(host)/ui/"
             HStack(spacing: 8) {
-                Text("Dashboard URL:")
+                Text("仪表板 URL:")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if let link = URL(string: url) {
@@ -193,13 +194,13 @@ struct TailscaleIntegrationSection: View {
                 }
             }
         } else if !self.effectiveService.isRunning {
-            Text("Start Tailscale to get your tailnet hostname.")
+            Text("启动 Tailscale 以获取您的 tailnet 主机名。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
 
         if self.effectiveService.isInstalled, !self.effectiveService.isRunning {
-            Button("Start Tailscale") { self.effectiveService.openTailscaleApp() }
+            Button("启动 Tailscale") { self.effectiveService.openTailscaleApp() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
         }
@@ -207,12 +208,12 @@ struct TailscaleIntegrationSection: View {
 
     private var serveAuthSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Toggle("Require credentials", isOn: self.$requireCredentialsForServe)
+            Toggle("需要凭据", isOn: self.$requireCredentialsForServe)
                 .toggleStyle(.checkbox)
             if self.requireCredentialsForServe {
                 self.authFields
             } else {
-                Text("Serve uses Tailscale identity headers; no password required.")
+                Text("Serve 使用 Tailscale 身份标头；无需密码。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -221,23 +222,23 @@ struct TailscaleIntegrationSection: View {
 
     private var funnelAuthSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Funnel requires authentication.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Text("Funnel 需要认证。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             self.authFields
         }
     }
 
     @ViewBuilder
     private var authFields: some View {
-        SecureField("Password", text: self.$password)
+        SecureField("密码", text: self.$password)
             .textFieldStyle(.roundedBorder)
             .frame(maxWidth: 240)
             .onSubmit { Task { await self.applySettings() } }
-        Text("Stored in ~/.clawdbot/moltbot.json. Prefer CLAWDBOT_GATEWAY_PASSWORD for production.")
+        Text("存储在 ~/.clawdbot/moltbot.json 中。生产环境建议使用 CLAWDBOT_GATEWAY_PASSWORD。")
             .font(.caption)
             .foregroundStyle(.secondary)
-        Button("Update password") { Task { await self.applySettings() } }
+        Button("更新密码") { Task { await self.applySettings() } }
             .buttonStyle(.bordered)
             .controlSize(.small)
     }
@@ -276,7 +277,7 @@ struct TailscaleIntegrationSection: View {
         let requiresPassword = self.tailscaleMode == .funnel
             || (self.tailscaleMode == .serve && self.requireCredentialsForServe)
         if requiresPassword, trimmedPassword.isEmpty {
-            self.validationMessage = "Password required for this mode."
+            self.validationMessage = "此模式需要密码。"
             return
         }
 
@@ -293,9 +294,9 @@ struct TailscaleIntegrationSection: View {
         }
 
         if self.connectionMode == .local, !self.isPaused {
-            self.statusMessage = "Saved to ~/.clawdbot/moltbot.json. Restarting gateway…"
+            self.statusMessage = "已保存到 ~/.clawdbot/moltbot.json。正在重启网关…"
         } else {
-            self.statusMessage = "Saved to ~/.clawdbot/moltbot.json. Restart the gateway to apply."
+            self.statusMessage = "已保存到 ~/.clawdbot/moltbot.json。重启网关以应用更改。"
         }
         self.restartGatewayIfNeeded()
     }

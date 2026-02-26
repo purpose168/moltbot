@@ -11,10 +11,10 @@ struct StatusPill: View {
 
         var title: String {
             switch self {
-            case .connected: "Connected"
-            case .connecting: "Connecting…"
-            case .error: "Error"
-            case .disconnected: "Offline"
+            case .connected: "已连接"
+            case .connecting: "连接中…"
+            case .error: "错误"
+            case .disconnected: "离线"
             }
         }
 
@@ -76,7 +76,7 @@ struct StatusPill: View {
                     Image(systemName: self.voiceWakeEnabled ? "mic.fill" : "mic.slash")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(self.voiceWakeEnabled ? .primary : .secondary)
-                        .accessibilityLabel(self.voiceWakeEnabled ? "Voice Wake enabled" : "Voice Wake disabled")
+                        .accessibilityLabel(self.voiceWakeEnabled ? "语音唤醒已启用" : "语音唤醒已禁用")
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
@@ -93,7 +93,7 @@ struct StatusPill: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Status")
+        .accessibilityLabel("状态")
         .accessibilityValue(self.accessibilityValue)
         .onAppear { self.updatePulse(for: self.gateway, scenePhase: self.scenePhase) }
         .onDisappear { self.pulse = false }
@@ -110,7 +110,7 @@ struct StatusPill: View {
         if let activity {
             return "\(self.gateway.title), \(activity.title)"
         }
-        return "\(self.gateway.title), Voice Wake \(self.voiceWakeEnabled ? "enabled" : "disabled")"
+        return "\(self.gateway.title), 语音唤醒 \(self.voiceWakeEnabled ? "已启用" : "已禁用")"
     }
 
     private func updatePulse(for gateway: GatewayState, scenePhase: ScenePhase) {

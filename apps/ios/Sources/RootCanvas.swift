@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 
+/// 根画布视图，作为应用的主界面容器
 struct RootCanvas: View {
     @Environment(NodeAppModel.self) private var appModel
     @Environment(VoiceWakeManager.self) private var voiceWake
@@ -13,6 +14,7 @@ struct RootCanvas: View {
     @State private var voiceWakeToastText: String?
     @State private var toastDismissTask: Task<Void, Never>?
 
+    /// 弹出表单类型枚举
     private enum PresentedSheet: Identifiable {
         case settings
         case chat
@@ -91,6 +93,7 @@ struct RootCanvas: View {
         }
     }
 
+    /// 获取网关状态
     private var gatewayStatus: StatusPill.GatewayState {
         if self.appModel.gatewayServerName != nil { return .connected }
 
@@ -108,10 +111,12 @@ struct RootCanvas: View {
         return .disconnected
     }
 
+    /// 更新空闲计时器设置
     private func updateIdleTimer() {
         UIApplication.shared.isIdleTimerDisabled = (self.scenePhase == .active && self.preventSleep)
     }
 
+    /// 更新画布调试状态
     private func updateCanvasDebugStatus() {
         self.appModel.screen.setDebugStatusEnabled(self.canvasDebugStatusEnabled)
         guard self.canvasDebugStatusEnabled else { return }
@@ -121,6 +126,7 @@ struct RootCanvas: View {
     }
 }
 
+/// 画布内容视图
 private struct CanvasContent: View {
     @Environment(NodeAppModel.self) private var appModel
     @AppStorage("talk.enabled") private var talkEnabled: Bool = false
@@ -134,6 +140,7 @@ private struct CanvasContent: View {
     var openChat: () -> Void
     var openSettings: () -> Void
 
+    /// 是否需要提亮按钮
     private var brightenButtons: Bool { self.systemColorScheme == .light }
 
     var body: some View {
@@ -144,10 +151,10 @@ private struct CanvasContent: View {
                 OverlayButton(systemImage: "text.bubble.fill", brighten: self.brightenButtons) {
                     self.openChat()
                 }
-                .accessibilityLabel("Chat")
+                .accessibilityLabel("聊天")
 
                 if self.talkButtonEnabled {
-                    // Talk mode lives on a side bubble so it doesn't get buried in settings.
+                    // 语音模式位于侧边气泡中，避免在设置中被掩埋
                     OverlayButton(
                         systemImage: self.appModel.talkMode.isEnabled ? "waveform.circle.fill" : "waveform.circle",
                         brighten: self.brightenButtons,
@@ -158,13 +165,13 @@ private struct CanvasContent: View {
                         self.talkEnabled = next
                         self.appModel.setTalkEnabled(next)
                     }
-                    .accessibilityLabel("Talk Mode")
+                    .accessibilityLabel("语音模式")
                 }
 
                 OverlayButton(systemImage: "gearshape.fill", brighten: self.brightenButtons) {
                     self.openSettings()
                 }
-                .accessibilityLabel("Settings")
+                .accessibilityLabel("设置")
             }
             .padding(.top, 10)
             .padding(.trailing, 10)
@@ -199,11 +206,12 @@ private struct CanvasContent: View {
         }
     }
 
+    /// 获取状态活动信息
     private var statusActivity: StatusPill.Activity? {
-        // Status pill owns transient activity state so it doesn't overlap the connection indicator.
+        // 状态胶囊拥有瞬态活动状态，避免与连接指示器重叠
         if self.appModel.isBackgrounded {
             return StatusPill.Activity(
-                title: "Foreground required",
+                title: "需要前台运行",
                 systemImage: "exclamationmark.triangle.fill",
                 tint: .orange)
         }
@@ -211,15 +219,15 @@ private struct CanvasContent: View {
         let gatewayStatus = self.appModel.gatewayStatusText.trimmingCharacters(in: .whitespacesAndNewlines)
         let gatewayLower = gatewayStatus.lowercased()
         if gatewayLower.contains("repair") {
-            return StatusPill.Activity(title: "Repairing…", systemImage: "wrench.and.screwdriver", tint: .orange)
+            return StatusPill.Activity(title: "正在修复…", systemImage: "wrench.and.screwdriver", tint: .orange)
         }
         if gatewayLower.contains("approval") || gatewayLower.contains("pairing") {
-            return StatusPill.Activity(title: "Approval pending", systemImage: "person.crop.circle.badge.clock")
+            return StatusPill.Activity(title: "等待批准", systemImage: "person.crop.circle.badge.clock")
         }
-        // Avoid duplicating the primary gateway status ("Connecting…") in the activity slot.
+        // 避免在活动槽中重复显示主要网关状态（"正在连接…"）
 
         if self.appModel.screenRecordActive {
-            return StatusPill.Activity(title: "Recording screen…", systemImage: "record.circle.fill", tint: .red)
+            return StatusPill.Activity(title: "正在录制屏幕…", systemImage: "record.circle.fill", tint: .red)
         }
 
         if let cameraHUDText, !cameraHUDText.isEmpty, let cameraHUDKind {
@@ -245,11 +253,11 @@ private struct CanvasContent: View {
         if self.voiceWakeEnabled {
             let voiceStatus = self.appModel.voiceWake.statusText
             if voiceStatus.localizedCaseInsensitiveContains("microphone permission") {
-                return StatusPill.Activity(title: "Mic permission", systemImage: "mic.slash", tint: .orange)
+                return StatusPill.Activity(title: "麦克风权限", systemImage: "mic.slash", tint: .orange)
             }
             if voiceStatus == "Paused" {
-                let suffix = self.appModel.isBackgrounded ? " (background)" : ""
-                return StatusPill.Activity(title: "Voice Wake paused\(suffix)", systemImage: "pause.circle.fill")
+                let suffix = self.appModel.isBackgrounded ? " (后台)" : ""
+                return StatusPill.Activity(title: "语音唤醒已暂停\(suffix)", systemImage: "pause.circle.fill")
             }
         }
 
@@ -257,6 +265,7 @@ private struct CanvasContent: View {
     }
 }
 
+/// 覆盖按钮视图
 private struct OverlayButton: View {
     let systemImage: String
     let brighten: Bool
@@ -314,6 +323,7 @@ private struct OverlayButton: View {
     }
 }
 
+/// 相机闪光覆盖视图
 private struct CameraFlashOverlay: View {
     var nonce: Int
 

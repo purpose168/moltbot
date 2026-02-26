@@ -6,6 +6,7 @@ import { v0_8 } from "@a2ui/lit";
 import "@a2ui/lit/ui";
 import { themeContext } from "@moltbot/a2ui-theme-context";
 
+// 定义模态框样式
 const modalStyles = css`
   dialog {
     position: fixed;
@@ -27,21 +28,26 @@ const modalStyles = css`
   }
 `;
 
+// 获取并扩展模态框元素样式
 const modalElement = customElements.get("a2ui-modal");
 if (modalElement && Array.isArray(modalElement.styles)) {
   modalElement.styles = [...modalElement.styles, modalStyles];
 }
 
+// 定义空对象和空类
 const empty = Object.freeze({});
 const emptyClasses = () => ({});
 const textHintStyles = () => ({ h1: {}, h2: {}, h3: {}, h4: {}, h5: {}, body: {}, caption: {} });
 
+// 检测是否为 Android 设备
 const isAndroid = /Android/i.test(globalThis.navigator?.userAgent ?? "");
+// 根据设备类型设置不同的阴影效果
 const cardShadow = isAndroid ? "0 2px 10px rgba(0,0,0,.18)" : "0 10px 30px rgba(0,0,0,.35)";
 const buttonShadow = isAndroid ? "0 2px 10px rgba(6, 182, 212, 0.14)" : "0 10px 25px rgba(6, 182, 212, 0.18)";
 const statusShadow = isAndroid ? "0 2px 10px rgba(0, 0, 0, 0.18)" : "0 10px 24px rgba(0, 0, 0, 0.25)";
 const statusBlur = isAndroid ? "10px" : "14px";
 
+// Moltbot 主题配置
 const moltbotTheme = {
   components: {
     AudioPlayer: emptyClasses(),
@@ -152,24 +158,29 @@ const moltbotTheme = {
   },
 };
 
+// Moltbot A2UI 主机组件
 class MoltbotA2UIHost extends LitElement {
   static properties = {
-    surfaces: { state: true },
-    pendingAction: { state: true },
-    toast: { state: true },
+    surfaces: { state: true },       // 界面表面状态
+    pendingAction: { state: true },   // 待处理动作状态
+    toast: { state: true },           // 提示消息状态
   };
 
+  // 创建 A2UI 消息处理器
   #processor = v0_8.Data.createSignalA2uiMessageProcessor();
+  // 创建主题提供者
   #themeProvider = new ContextProvider(this, {
     context: themeContext,
     initialValue: moltbotTheme,
   });
 
+  // 初始化状态
   surfaces = [];
   pendingAction = null;
   toast = null;
   #statusListener = null;
 
+  // 组件样式
   static styles = css`
     :host {
       display: block;
@@ -274,21 +285,27 @@ class MoltbotA2UIHost extends LitElement {
     }
   `;
 
+  // 组件连接到 DOM 时调用
   connectedCallback() {
     super.connectedCallback();
+    // 定义 API 接口
     const api = {
       applyMessages: (messages) => this.applyMessages(messages),
       reset: () => this.reset(),
       getSurfaces: () => Array.from(this.#processor.getSurfaces().keys()),
     };
+    // 暴露全局 API
     globalThis.moltbotA2UI = api;
     globalThis.clawdbotA2UI = api;
+    // 添加事件监听器
     this.addEventListener("a2uiaction", (evt) => this.#handleA2UIAction(evt));
     this.#statusListener = (evt) => this.#handleActionStatus(evt);
     globalThis.addEventListener("moltbot:a2ui-action-status", this.#statusListener);
+    // 同步界面表面
     this.#syncSurfaces();
   }
 
+  // 组件从 DOM 断开时调用
   disconnectedCallback() {
     super.disconnectedCallback();
     if (this.#statusListener) {
@@ -297,14 +314,17 @@ class MoltbotA2UIHost extends LitElement {
     }
   }
 
+  // 生成动作 ID
   #makeActionId() {
     return globalThis.crypto?.randomUUID?.() ?? `a2ui_${Date.now()}_${Math.random().toString(16).slice(2)}`;
   }
 
+  // 设置提示消息
   #setToast(text, kind = "ok", timeoutMs = 1400) {
     const toast = { text, kind, expiresAt: Date.now() + timeoutMs };
     this.toast = toast;
     this.requestUpdate();
+    // 定时清除提示消息
     setTimeout(() => {
       if (this.toast === toast) {
         this.toast = null;
@@ -313,14 +333,17 @@ class MoltbotA2UIHost extends LitElement {
     }, timeoutMs + 30);
   }
 
+  // 处理动作状态更新
   #handleActionStatus(evt) {
     const detail = evt?.detail ?? null;
     if (!detail || typeof detail.id !== "string") return;
     if (!this.pendingAction || this.pendingAction.id !== detail.id) return;
 
     if (detail.ok) {
+      // 动作成功发送
       this.pendingAction = { ...this.pendingAction, phase: "sent", sentAt: Date.now() };
     } else {
+      // 动作发送失败
       const msg = typeof detail.error === "string" && detail.error ? detail.error : "send failed";
       this.pendingAction = { ...this.pendingAction, phase: "error", error: msg };
       this.#setToast(`Failed: ${msg}`, "error", 4500);
@@ -328,6 +351,7 @@ class MoltbotA2UIHost extends LitElement {
     this.requestUpdate();
   }
 
+  // 处理 A2UI 动作
   #handleA2UIAction(evt) {
     const payload = evt?.detail ?? evt?.payload ?? null;
     if (!payload || payload.eventType !== "a2ui.action") {
@@ -345,6 +369,7 @@ class MoltbotA2UIHost extends LitElement {
 
     let surfaceId = null;
     let sourceNode = null;
+    // 查找动作来源组件
     for (const [sid, surface] of surfaces.entries()) {
       const node = surface?.components?.get?.(sourceComponentId) ?? null;
       if (node) {
@@ -354,6 +379,7 @@ class MoltbotA2UIHost extends LitElement {
       }
     }
 
+    // 构建动作上下文
     const context = {};
     const ctxItems = Array.isArray(action?.context) ? action.context : [];
     for (const item of ctxItems) {
@@ -362,6 +388,7 @@ class MoltbotA2UIHost extends LitElement {
       if (!key || !value) continue;
 
       if (typeof value.path === "string") {
+        // 解析路径值
         const resolved = sourceNode
           ? this.#processor.getData(sourceNode, value.path, surfaceId ?? undefined)
           : null;
@@ -369,23 +396,28 @@ class MoltbotA2UIHost extends LitElement {
         continue;
       }
       if (Object.prototype.hasOwnProperty.call(value, "literalString")) {
+        // 处理字符串字面量
         context[key] = value.literalString ?? "";
         continue;
       }
       if (Object.prototype.hasOwnProperty.call(value, "literalNumber")) {
+        // 处理数字字面量
         context[key] = value.literalNumber ?? 0;
         continue;
       }
       if (Object.prototype.hasOwnProperty.call(value, "literalBoolean")) {
+        // 处理布尔字面量
         context[key] = value.literalBoolean ?? false;
         continue;
       }
     }
 
+    // 创建动作 ID 并更新状态
     const actionId = this.#makeActionId();
     this.pendingAction = { id: actionId, name, phase: "sending", startedAt: Date.now() };
     this.requestUpdate();
 
+    // 构建用户动作对象
     const userAction = {
       id: actionId,
       name,
@@ -395,16 +427,18 @@ class MoltbotA2UIHost extends LitElement {
       ...(Object.keys(context).length ? { context } : {}),
     };
 
+    // 存储最后一个 A2UI 动作
     globalThis.__moltbotLastA2UIAction = userAction;
 
-    const handler =
+    // 获取消息处理器
+    const handler = 
       globalThis.webkit?.messageHandlers?.moltbotCanvasA2UIAction ??
       globalThis.webkit?.messageHandlers?.clawdbotCanvasA2UIAction ??
       globalThis.moltbotCanvasA2UIAction ??
       globalThis.clawdbotCanvasA2UIAction;
     if (handler?.postMessage) {
       try {
-        // WebKit message handlers support structured objects; Android's JS interface expects strings.
+        // WebKit 消息处理器支持结构化对象；Android 的 JS 接口期望字符串
         if (
           handler === globalThis.moltbotCanvasA2UIAction ||
           handler === globalThis.clawdbotCanvasA2UIAction
@@ -414,22 +448,28 @@ class MoltbotA2UIHost extends LitElement {
           handler.postMessage({ userAction });
         }
       } catch (e) {
+        // 处理发送错误
         const msg = String(e?.message ?? e);
         this.pendingAction = { id: actionId, name, phase: "error", startedAt: Date.now(), error: msg };
         this.#setToast(`Failed: ${msg}`, "error", 4500);
       }
     } else {
+      // 处理缺少原生桥接的情况
       this.pendingAction = { id: actionId, name, phase: "error", startedAt: Date.now(), error: "missing native bridge" };
       this.#setToast("Failed: missing native bridge", "error", 4500);
     }
   }
 
+  // 应用消息到界面
   applyMessages(messages) {
     if (!Array.isArray(messages)) {
       throw new Error("A2UI: expected messages array");
     }
+    // 处理消息
     this.#processor.processMessages(messages);
+    // 同步界面表面
     this.#syncSurfaces();
+    // 处理已发送的动作
     if (this.pendingAction?.phase === "sent") {
       this.#setToast(`Updated: ${this.pendingAction.name}`, "ok", 1100);
       this.pendingAction = null;
@@ -438,6 +478,7 @@ class MoltbotA2UIHost extends LitElement {
     return { ok: true, surfaces: this.surfaces.map(([id]) => id) };
   }
 
+  // 重置界面
   reset() {
     this.#processor.clearSurfaces();
     this.#syncSurfaces();
@@ -446,11 +487,14 @@ class MoltbotA2UIHost extends LitElement {
     return { ok: true };
   }
 
+  // 同步界面表面
   #syncSurfaces() {
     this.surfaces = Array.from(this.#processor.getSurfaces().entries());
   }
 
+  // 渲染组件
   render() {
+    // 空状态
     if (this.surfaces.length === 0) {
       return html`<div class="empty">
         <div class="empty-title">Canvas (A2UI)</div>
@@ -458,6 +502,7 @@ class MoltbotA2UIHost extends LitElement {
       </div>`;
     }
 
+    // 计算状态文本
     const statusText =
       this.pendingAction?.phase === "sent"
         ? `Working: ${this.pendingAction.name}`
@@ -467,6 +512,7 @@ class MoltbotA2UIHost extends LitElement {
             ? `Failed: ${this.pendingAction.name}`
             : "";
 
+    // 渲染界面
     return html`
       ${this.pendingAction && this.pendingAction.phase !== "error"
         ? html`<div class="status"><div class="spinner"></div><div>${statusText}</div></div>`
@@ -488,4 +534,5 @@ class MoltbotA2UIHost extends LitElement {
   }
 }
 
+// 注册自定义元素
 customElements.define("moltbot-a2ui-host", MoltbotA2UIHost);

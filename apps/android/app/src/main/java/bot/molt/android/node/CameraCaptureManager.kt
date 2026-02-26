@@ -56,7 +56,7 @@ class CameraCaptureManager(private val context: Context) {
       ?: throw IllegalStateException("CAMERA_PERMISSION_REQUIRED: grant Camera permission")
     val results = requester.requestIfMissing(listOf(Manifest.permission.CAMERA))
     if (results[Manifest.permission.CAMERA] != true) {
-      throw IllegalStateException("CAMERA_PERMISSION_REQUIRED: grant Camera permission")
+      throw IllegalStateException("相机权限未授予：请授予相机权限")
     }
   }
 
@@ -68,14 +68,14 @@ class CameraCaptureManager(private val context: Context) {
       ?: throw IllegalStateException("MIC_PERMISSION_REQUIRED: grant Microphone permission")
     val results = requester.requestIfMissing(listOf(Manifest.permission.RECORD_AUDIO))
     if (results[Manifest.permission.RECORD_AUDIO] != true) {
-      throw IllegalStateException("MIC_PERMISSION_REQUIRED: grant Microphone permission")
+      throw IllegalStateException("麦克风权限未授予：请授予麦克风权限")
     }
   }
 
   suspend fun snap(paramsJson: String?): Payload =
     withContext(Dispatchers.Main) {
       ensureCameraPermission()
-      val owner = lifecycleOwner ?: throw IllegalStateException("UNAVAILABLE: camera not ready")
+      val owner = lifecycleOwner ?: throw IllegalStateException("不可用：相机未准备好")
       val facing = parseFacing(paramsJson) ?: "front"
       val quality = (parseQuality(paramsJson) ?: 0.9).coerceIn(0.1, 1.0)
       val maxWidth = parseMaxWidth(paramsJson)
@@ -90,7 +90,7 @@ class CameraCaptureManager(private val context: Context) {
 
       val (bytes, orientation) = capture.takeJpegWithExif(context.mainExecutor())
       val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        ?: throw IllegalStateException("UNAVAILABLE: failed to decode captured image")
+        ?: throw IllegalStateException("不可用：解码捕获的图像失败")
       val rotated = rotateBitmapByExif(decoded, orientation)
       val scaled =
         if (maxWidth != null && maxWidth > 0 && rotated.width > maxWidth) {
@@ -122,7 +122,7 @@ class CameraCaptureManager(private val context: Context) {
             val out = ByteArrayOutputStream()
             if (!bitmap.compress(Bitmap.CompressFormat.JPEG, q, out)) {
               if (bitmap !== scaled) bitmap.recycle()
-              throw IllegalStateException("UNAVAILABLE: failed to encode JPEG")
+              throw IllegalStateException("不可用：JPEG编码失败")
             }
             if (bitmap !== scaled) {
               bitmap.recycle()
@@ -182,11 +182,11 @@ class CameraCaptureManager(private val context: Context) {
           withTimeout(10_000) { finalized.await() }
         } catch (err: Throwable) {
           file.delete()
-          throw IllegalStateException("UNAVAILABLE: camera clip finalize timed out")
+          throw IllegalStateException("不可用：相机视频片段完成超时")
         }
       if (finalizeEvent.hasError()) {
         file.delete()
-        throw IllegalStateException("UNAVAILABLE: camera clip failed")
+        throw IllegalStateException("不可用：相机视频片段失败")
       }
 
       val bytes = file.readBytes()
@@ -282,7 +282,7 @@ private suspend fun Context.cameraProvider(): ProcessCameraProvider =
     )
   }
 
-/** Returns (jpegBytes, exifOrientation) so caller can rotate the decoded bitmap. */
+/** 返回 (jpegBytes, exifOrientation) 以便调用者可以旋转解码后的位图。 */
 private suspend fun ImageCapture.takeJpegWithExif(executor: Executor): Pair<ByteArray, Int> =
   suspendCancellableCoroutine { cont ->
     val file = File.createTempFile("moltbot-snap-", ".jpg")

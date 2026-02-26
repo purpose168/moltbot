@@ -1,16 +1,16 @@
-## Clawdbot Node (Android) (internal)
+## Clawdbot 节点 (Android) (内部)
 
-Modern Android node app: connects to the **Gateway WebSocket** (`_clawdbot-gw._tcp`) and exposes **Canvas + Chat + Camera**.
+现代 Android 节点应用:连接到 **Gateway WebSocket** (`_clawdbot-gw._tcp`) 并暴露 **Canvas + Chat + Camera** 功能。
 
-Notes:
-- The node keeps the connection alive via a **foreground service** (persistent notification with a Disconnect action).
-- Chat always uses the shared session key **`main`** (same session across iOS/macOS/WebChat/Android).
-- Supports modern Android only (`minSdk 31`, Kotlin + Jetpack Compose).
+注意事项:
+- 节点通过 **前台服务** 保持连接活跃(带有断开操作的持久通知)
+- 聊天始终使用共享会话密钥 **`main`** (在 iOS/macOS/WebChat/Android 之间使用相同的会话)
+- 仅支持现代 Android (`minSdk 31`, Kotlin + Jetpack Compose)
 
-## Open in Android Studio
-- Open the folder `apps/android`.
+## 在 Android Studio 中打开
+- 打开文件夹 `apps/android`
 
-## Build / Run
+## 构建 / 运行
 
 ```bash
 cd apps/android
@@ -19,33 +19,33 @@ cd apps/android
 ./gradlew :app:testDebugUnitTest
 ```
 
-`gradlew` auto-detects the Android SDK at `~/Library/Android/sdk` (macOS default) if `ANDROID_SDK_ROOT` / `ANDROID_HOME` are unset.
+如果未设置 `ANDROID_SDK_ROOT` / `ANDROID_HOME`,`gradlew` 会自动检测 `~/Library/Android/sdk` (macOS 默认路径) 中的 Android SDK。
 
-## Connect / Pair
+## 连接 / 配对
 
-1) Start the gateway (on your “master” machine):
+1) 启动网关(在您的"主控"机器上):
 ```bash
 pnpm clawdbot gateway --port 18789 --verbose
 ```
 
-2) In the Android app:
-- Open **Settings**
-- Either select a discovered gateway under **Discovered Gateways**, or use **Advanced → Manual Gateway** (host + port).
+2) 在 Android 应用中:
+- 打开 **设置**
+- 在 **发现的网关** 下选择一个已发现的网关,或使用 **高级 → 手动网关**(主机 + 端口)
 
-3) Approve pairing (on the gateway machine):
+3) 批准配对(在网关机器上):
 ```bash
 clawdbot nodes pending
 clawdbot nodes approve <requestId>
 ```
 
-More details: `docs/platforms/android.md`.
+更多详情: `docs/platforms/android.md`
 
-## Permissions
+## 权限
 
-- Discovery:
+- 发现:
   - Android 13+ (`API 33+`): `NEARBY_WIFI_DEVICES`
-  - Android 12 and below: `ACCESS_FINE_LOCATION` (required for NSD scanning)
-- Foreground service notification (Android 13+): `POST_NOTIFICATIONS`
-- Camera:
-  - `CAMERA` for `camera.snap` and `camera.clip`
-  - `RECORD_AUDIO` for `camera.clip` when `includeAudio=true`
+  - Android 12 及以下: `ACCESS_FINE_LOCATION` (NSD 扫描所需)
+- 前台服务通知 (Android 13+): `POST_NOTIFICATIONS`
+- 相机:
+  - `CAMERA` 用于 `camera.snap` 和 `camera.clip`
+  - `RECORD_AUDIO` 用于 `camera.clip` 当 `includeAudio=true` 时

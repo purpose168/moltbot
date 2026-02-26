@@ -1,42 +1,87 @@
 import AppKit
 
+/// 小动物图标渲染器
+/// 
+/// 用于生成和渲染应用中的小动物图标
 enum CritterIconRenderer {
+    /// 图标大小
     private static let size = NSSize(width: 18, height: 18)
 
+    /// 徽章结构
+    /// 
+    /// 表示图标的徽章
     struct Badge {
+        /// 符号名称
         let symbolName: String
+        /// 徽章突出度
         let prominence: IconState.BadgeProminence
     }
 
+    /// 画布结构
+    /// 
+    /// 表示绘制图标时使用的画布
     private struct Canvas {
+        /// 宽度
         let w: CGFloat
+        /// 高度
         let h: CGFloat
+        /// X轴步长
         let stepX: CGFloat
+        /// Y轴步长
         let stepY: CGFloat
+        /// X轴对齐函数
         let snapX: (CGFloat) -> CGFloat
+        /// Y轴对齐函数
         let snapY: (CGFloat) -> CGFloat
+        /// 上下文
         let context: CGContext
     }
 
+    /// 几何结构
+    /// 
+    /// 表示图标的几何形状参数
     private struct Geometry {
+        /// 身体矩形
         let bodyRect: CGRect
+        /// 身体圆角
         let bodyCorner: CGFloat
+        /// 左耳矩形
         let leftEarRect: CGRect
+        /// 右耳矩形
         let rightEarRect: CGRect
+        /// 耳朵圆角
         let earCorner: CGFloat
+        /// 耳朵宽度
         let earW: CGFloat
+        /// 耳朵高度
         let earH: CGFloat
+        /// 腿宽度
         let legW: CGFloat
+        /// 腿高度
         let legH: CGFloat
+        /// 腿间距
         let legSpacing: CGFloat
+        /// 腿起始X坐标
         let legStartX: CGFloat
+        /// 腿Y基准
         let legYBase: CGFloat
+        /// 腿抬起高度
         let legLift: CGFloat
+        /// 腿高度缩放
         let legHeightScale: CGFloat
+        /// 眼睛宽度
         let eyeW: CGFloat
+        /// 眼睛Y坐标
         let eyeY: CGFloat
+        /// 眼睛偏移
         let eyeOffset: CGFloat
 
+        /// 初始化几何结构
+        /// - Parameters:
+        ///   - canvas: 画布
+        ///   - legWiggle: 腿摆动幅度
+        ///   - earWiggle: 耳朵摆动幅度
+        ///   - earScale: 耳朵缩放比例
         init(canvas: Canvas, legWiggle: CGFloat, earWiggle: CGFloat, earScale: CGFloat) {
             let w = canvas.w
             let h = canvas.h
@@ -96,13 +141,30 @@ enum CritterIconRenderer {
         }
     }
 
+    /// 面部选项结构
+    /// 
+    /// 表示图标的面部选项
     private struct FaceOptions {
+        /// 眨眼程度
         let blink: CGFloat
+        /// 是否显示耳洞
         let earHoles: Bool
+        /// 耳朵缩放比例
         let earScale: CGFloat
+        /// 是否显示闭眼线条
         let eyesClosedLines: Bool
     }
 
+    /// 生成图标
+    /// - Parameters:
+    ///   - blink: 眨眼程度
+    ///   - legWiggle: 腿摆动幅度，默认为0
+    ///   - earWiggle: 耳朵摆动幅度，默认为0
+    ///   - earScale: 耳朵缩放比例，默认为1
+    ///   - earHoles: 是否显示耳洞，默认为false
+    ///   - eyesClosedLines: 是否显示闭眼线条，默认为false
+    ///   - badge: 徽章，默认为nil
+    /// - Returns: 生成的图标
     static func makeIcon(
         blink: CGFloat,
         legWiggle: CGFloat = 0,
@@ -148,8 +210,10 @@ enum CritterIconRenderer {
         return image
     }
 
+    /// 创建位图表示
+    /// - Returns: 位图表示
     private static func makeBitmapRep() -> NSBitmapImageRep? {
-        // Force a 36×36px backing store (2× for the 18pt logical canvas) so the menu bar icon stays crisp on Retina.
+        // 强制使用36×36px的后备存储（18pt逻辑画布的2倍），使菜单栏图标在Retina上保持清晰。
         let pixelsWide = 36
         let pixelsHigh = 36
         return NSBitmapImageRep(
@@ -166,6 +230,11 @@ enum CritterIconRenderer {
             bitsPerPixel: 0)
     }
 
+    /// 创建画布
+    /// - Parameters:
+    ///   - rep: 位图表示
+    ///   - context: 图形上下文
+    /// - Returns: 画布
     private static func makeCanvas(for rep: NSBitmapImageRep, context: NSGraphicsContext) -> Canvas {
         let stepX = self.size.width / max(CGFloat(rep.pixelsWide), 1)
         let stepY = self.size.height / max(CGFloat(rep.pixelsHigh), 1)
@@ -185,6 +254,10 @@ enum CritterIconRenderer {
             context: context.cgContext)
     }
 
+    /// 绘制身体
+    /// - Parameters:
+    ///   - canvas: 画布
+    ///   - geometry: 几何形状
     private static func drawBody(in canvas: Canvas, geometry: Geometry) {
         canvas.context.setFillColor(NSColor.labelColor.cgColor)
 
@@ -221,6 +294,11 @@ enum CritterIconRenderer {
         canvas.context.fillPath()
     }
 
+    /// 绘制面部
+    /// - Parameters:
+    ///   - canvas: 画布
+    ///   - geometry: 几何形状
+    ///   - options: 面部选项
     private static func drawFace(
         in canvas: Canvas,
         geometry: Geometry,
@@ -323,6 +401,10 @@ enum CritterIconRenderer {
         canvas.context.restoreGState()
     }
 
+    /// 绘制徽章
+    /// - Parameters:
+    ///   - badge: 徽章
+    ///   - canvas: 画布
     private static func drawBadge(_ badge: Badge, canvas: Canvas) {
         let strength: CGFloat = switch badge.prominence {
         case .primary: 1.0
@@ -330,11 +412,11 @@ enum CritterIconRenderer {
         case .overridden: 0.85
         }
 
-        // Bigger, higher-contrast badge:
-        // - Increase diameter so tool activity is noticeable.
-        // - Draw a filled "puck", then knock out the symbol shape (transparent hole).
-        //   This reads better in template-rendered menu bar icons than tiny monochrome glyphs.
-        let diameter = canvas.snapX(canvas.w * 0.52 * (0.92 + 0.08 * strength)) // ~9–10pt on an 18pt canvas
+        // 更大、对比度更高的徽章：
+        // - 增加直径，使工具活动更加明显。
+        // - 绘制一个填充的"圆盘"，然后挖出符号形状（透明孔）。
+        //   这在模板渲染的菜单栏图标中比微小的单色符号可读性更好。
+        let diameter = canvas.snapX(canvas.w * 0.52 * (0.92 + 0.08 * strength)) // 在18pt画布上约为9-10pt
         let margin = canvas.snapX(max(0.45, canvas.w * 0.03))
         let rect = CGRect(
             x: canvas.snapX(canvas.w - diameter - margin),
@@ -345,7 +427,7 @@ enum CritterIconRenderer {
         canvas.context.saveGState()
         canvas.context.setShouldAntialias(true)
 
-        // Clear the underlying pixels so the badge stays readable over the critter.
+        // 清除底层像素，使徽章在小动物上方保持可读性。
         canvas.context.saveGState()
         canvas.context.setBlendMode(.clear)
         canvas.context.addEllipse(in: rect.insetBy(dx: -1.0, dy: -1.0))

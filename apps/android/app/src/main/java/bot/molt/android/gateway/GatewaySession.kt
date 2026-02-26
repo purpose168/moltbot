@@ -148,7 +148,7 @@ class GatewaySession(
     try {
       conn.request("node.event", params, timeoutMs = 8_000)
     } catch (err: Throwable) {
-      Log.w("MoltbotGateway", "node.event failed: ${err.message ?: err::class.java.simpleName}")
+      Log.w("MoltbotGateway", "节点事件发送失败: ${err.message ?: err::class.java.simpleName}")
     }
   }
 

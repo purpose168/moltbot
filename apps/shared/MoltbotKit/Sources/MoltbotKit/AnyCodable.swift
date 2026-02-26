@@ -1,8 +1,8 @@
 import Foundation
 
-/// Lightweight `Codable` wrapper that round-trips heterogeneous JSON payloads.
+/// 轻量级 `Codable` 包装器，用于往返处理异构 JSON 负载。
 ///
-/// Marked `@unchecked Sendable` because it can hold reference types.
+/// 标记为 `@unchecked Sendable`，因为它可以持有引用类型。
 public struct AnyCodable: Codable, @unchecked Sendable, Hashable {
     public let value: Any
 

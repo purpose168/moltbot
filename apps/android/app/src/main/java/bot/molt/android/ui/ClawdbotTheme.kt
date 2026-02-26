@@ -22,7 +22,7 @@ fun overlayContainerColor(): Color {
   val scheme = MaterialTheme.colorScheme
   val isDark = isSystemInDarkTheme()
   val base = if (isDark) scheme.surfaceContainerLow else scheme.surfaceContainerHigh
-  // Light mode: background stays dark (canvas), so clamp overlays away from pure-white glare.
+  // 亮色模式：背景保持深色(画布),因此将覆盖层限制远离纯白眩光
   return if (isDark) base else base.copy(alpha = 0.88f)
 }
 

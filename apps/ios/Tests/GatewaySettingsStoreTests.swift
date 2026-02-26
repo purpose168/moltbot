@@ -2,17 +2,26 @@ import Foundation
 import Testing
 @testable import Moltbot
 
+/// 表示 Keychain 中的一个条目
 private struct KeychainEntry: Hashable {
     let service: String
     let account: String
 }
 
+/// Gateway 服务标识符
 private let gatewayService = "bot.molt.gateway"
+/// Node 服务标识符
 private let nodeService = "bot.molt.node"
+/// 实例 ID 的 Keychain 条目
 private let instanceIdEntry = KeychainEntry(service: nodeService, account: "instanceId")
+/// 首选 Gateway 的 Keychain 条目
 private let preferredGatewayEntry = KeychainEntry(service: gatewayService, account: "preferredStableID")
+/// 最后发现的 Gateway 的 Keychain 条目
 private let lastGatewayEntry = KeychainEntry(service: gatewayService, account: "lastDiscoveredStableID")
 
+/// 对指定键的 UserDefaults 值进行快照
+/// - Parameter keys: 需要快照的键数组
+/// - Returns: 包含键值对的字典
 private func snapshotDefaults(_ keys: [String]) -> [String: Any?] {
     let defaults = UserDefaults.standard
     var snapshot: [String: Any?] = [:]
@@ -22,6 +31,8 @@ private func snapshotDefaults(_ keys: [String]) -> [String: Any?] {
     return snapshot
 }
 
+/// 应用指定的 UserDefaults 值
+/// - Parameter values: 要应用的键值对字典
 private func applyDefaults(_ values: [String: Any?]) {
     let defaults = UserDefaults.standard
     for (key, value) in values {
@@ -33,10 +44,15 @@ private func applyDefaults(_ values: [String: Any?]) {
     }
 }
 
+/// 恢复 UserDefaults 的快照值
+/// - Parameter snapshot: 之前获取的快照
 private func restoreDefaults(_ snapshot: [String: Any?]) {
     applyDefaults(snapshot)
 }
 
+/// 对指定的 Keychain 条目进行快照
+/// - Parameter entries: 需要快照的 Keychain 条目数组
+/// - Returns: 包含条目和对应值的字典
 private func snapshotKeychain(_ entries: [KeychainEntry]) -> [KeychainEntry: String?] {
     var snapshot: [KeychainEntry: String?] = [:]
     for entry in entries {
@@ -45,6 +61,8 @@ private func snapshotKeychain(_ entries: [KeychainEntry]) -> [KeychainEntry: Str
     return snapshot
 }
 
+/// 应用指定的 Keychain 值
+/// - Parameter values: 要应用的条目和对应值的字典
 private func applyKeychain(_ values: [KeychainEntry: String?]) {
     for (entry, value) in values {
         if let value {
@@ -55,11 +73,15 @@ private func applyKeychain(_ values: [KeychainEntry: String?]) {
     }
 }
 
+/// 恢复 Keychain 的快照值
+/// - Parameter snapshot: 之前获取的快照
 private func restoreKeychain(_ snapshot: [KeychainEntry: String?]) {
     applyKeychain(snapshot)
 }
 
+/// Gateway 设置存储的测试套件
 @Suite(.serialized) struct GatewaySettingsStoreTests {
+    /// 测试当 Keychain 中缺少数据时，从 UserDefaults 复制数据到 Keychain
     @Test func bootstrapCopiesDefaultsToKeychainWhenMissing() {
         let defaultsKeys = [
             "node.instanceId",
@@ -92,6 +114,7 @@ private func restoreKeychain(_ snapshot: [KeychainEntry: String?]) {
         #expect(KeychainStore.loadString(service: gatewayService, account: "lastDiscoveredStableID") == "last-test")
     }
 
+    /// 测试当 UserDefaults 中缺少数据时，从 Keychain 复制数据到 UserDefaults
     @Test func bootstrapCopiesKeychainToDefaultsWhenMissing() {
         let defaultsKeys = [
             "node.instanceId",

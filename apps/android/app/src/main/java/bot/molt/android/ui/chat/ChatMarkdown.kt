@@ -200,13 +200,13 @@ private fun InlineBase64Image(base64: String, mimeType: String?) {
   if (image != null) {
     Image(
       bitmap = image!!,
-      contentDescription = mimeType ?: "image",
+      contentDescription = mimeType ?: "图片",
       contentScale = ContentScale.Fit,
       modifier = Modifier.fillMaxWidth(),
     )
   } else if (failed) {
     Text(
-      text = "Image unavailable",
+      text = "图片不可用",
       modifier = Modifier.padding(vertical = 2.dp),
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,

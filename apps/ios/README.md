@@ -1,21 +1,21 @@
 # Clawdbot (iOS)
 
-Internal-only SwiftUI app scaffold.
+仅供内部使用的 SwiftUI 应用脚手架。
 
-## Lint/format (required)
+## 代码检查/格式化（必需）
 ```bash
 brew install swiftformat swiftlint
 ```
 
-## Generate the Xcode project
+## 生成 Xcode 项目
 ```bash
 cd apps/ios
 xcodegen generate
 open Clawdbot.xcodeproj
 ```
 
-## Shared packages
-- `../shared/MoltbotKit` — shared types/constants used by iOS (and later macOS bridge + gateway routing).
+## 共享包
+- `../shared/MoltbotKit` — iOS（以及后续的 macOS 桥接 + 网关路由）使用的共享类型/常量。
 
 ## fastlane
 ```bash
@@ -25,4 +25,4 @@ cd apps/ios
 fastlane lanes
 ```
 
-See `apps/ios/fastlane/SETUP.md` for App Store Connect auth + upload lanes.
+有关 App Store Connect 认证和上传通道的信息，请参阅 `apps/ios/fastlane/SETUP.md`。

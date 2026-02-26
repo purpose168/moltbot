@@ -3,7 +3,7 @@ import Observation
 import QuartzCore
 import SwiftUI
 
-/// Hover-only HUD anchored to the menu bar item. Click expands into full Web Chat.
+/// 仅悬停显示的HUD,锚定到菜单栏项。点击展开为完整的Web聊天
 @MainActor
 @Observable
 final class HoverHUDController {
@@ -30,6 +30,7 @@ final class HoverHUDController {
     private let padding: CGFloat = 8
     private let hoverShowDelay: TimeInterval = 0.18
 
+    /// 设置抑制状态
     func setSuppressed(_ suppressed: Bool) {
         self.model.isSuppressed = suppressed
         if suppressed {
@@ -39,6 +40,7 @@ final class HoverHUDController {
         }
     }
 
+    /// 状态项悬停状态变化
     func statusItemHoverChanged(inside: Bool, anchorProvider: @escaping () -> NSRect?) {
         self.model.hoveringStatusItem = inside
         self.anchorProvider = anchorProvider
@@ -67,6 +69,7 @@ final class HoverHUDController {
         }
     }
 
+    /// 面板悬停状态变化
     func panelHoverChanged(inside: Bool) {
         self.model.hoveringPanel = inside
         if inside {
@@ -77,6 +80,7 @@ final class HoverHUDController {
         }
     }
 
+    /// 打开聊天
     func openChat() {
         guard let anchorProvider = self.anchorProvider else { return }
         self.dismiss(reason: "openChat")
@@ -86,6 +90,7 @@ final class HoverHUDController {
         }
     }
 
+    /// 关闭
     func dismiss(reason: String = "explicit") {
         self.dismissTask?.cancel()
         self.dismissTask = nil
@@ -116,6 +121,7 @@ final class HoverHUDController {
 
     // MARK: - Private
 
+    /// 调度关闭
     private func scheduleDismiss() {
         self.dismissTask?.cancel()
         self.dismissTask = Task { [weak self] in
@@ -128,6 +134,7 @@ final class HoverHUDController {
         }
     }
 
+    /// 显示
     private func present() {
         guard !self.model.isSuppressed else { return }
         self.ensureWindow()
@@ -155,6 +162,7 @@ final class HoverHUDController {
         }
     }
 
+    /// 确保窗口存在
     private func ensureWindow() {
         if self.window != nil { return }
         let panel = NSPanel(
@@ -181,6 +189,7 @@ final class HoverHUDController {
         self.window = panel
     }
 
+    /// 获取目标框架
     private func targetFrame() -> NSRect {
         guard let anchor = self.anchorProvider?() else {
             return WindowPlacement.topRightFrame(
@@ -200,6 +209,7 @@ final class HoverHUDController {
             in: bounds)
     }
 
+    /// 更新窗口框架
     private func updateWindowFrame(animate: Bool = false) {
         guard let window else { return }
         let frame = self.targetFrame()
@@ -214,6 +224,7 @@ final class HoverHUDController {
         }
     }
 
+    /// 安装关闭监视器
     private func installDismissMonitor() {
         if ProcessInfo.processInfo.isRunningTests { return }
         guard self.dismissMonitor == nil, let window else { return }
@@ -230,6 +241,7 @@ final class HoverHUDController {
         }
     }
 
+    /// 移除关闭监视器
     private func removeDismissMonitor() {
         if let monitor = self.dismissMonitor {
             NSEvent.removeMonitor(monitor)
@@ -238,21 +250,25 @@ final class HoverHUDController {
     }
 }
 
+/// 悬停HUD视图
 private struct HoverHUDView: View {
     var controller: HoverHUDController
     private let activityStore = WorkActivityStore.shared
 
+    /// 状态标题
     private var statusTitle: String {
-        if self.activityStore.iconState.isWorking { return "Working" }
+        if self.activityStore.iconState.isWorking { return "工作中" }
         return "Idle"
     }
 
+    /// 详情文本
     private var detail: String {
         if let current = self.activityStore.current?.label, !current.isEmpty { return current }
         if let last = self.activityStore.lastToolLabel, !last.isEmpty { return last }
-        return "No recent activity"
+        return "没有最近的活动"
     }
 
+    /// 符号名称
     private var symbolName: String {
         if self.activityStore.iconState.isWorking {
             return self.activityStore.iconState.badgeSymbolName
@@ -260,6 +276,7 @@ private struct HoverHUDView: View {
         return "moon.zzz.fill"
     }
 
+    /// 点颜色
     private var dotColor: Color {
         if self.activityStore.iconState.isWorking {
             return Color(nsColor: NSColor.systemGreen.withAlphaComponent(0.7))

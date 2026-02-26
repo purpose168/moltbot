@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
 
-/// Manages the SSH tunnel that forwards the remote gateway/control port to localhost.
+/// 管理 SSH 隧道,将远程网关/控制端口转发到 localhost。
 actor RemoteTunnelManager {
     static let shared = RemoteTunnelManager()
 
@@ -31,8 +31,8 @@ actor RemoteTunnelManager {
             tunnel.terminate()
             self.controlTunnel = nil
         }
-        // If a previous Moltbot run already has an SSH listener on the expected port (common after restarts),
-        // reuse it instead of spawning new ssh processes that immediately fail with "Address already in use".
+        // 如果之前的 Moltbot 运行已在预期端口上有 SSH 监听器(重启后常见),
+        // 重用它而不是生成新的 ssh 进程,这些进程会立即失败并显示"地址已在使用"。
         let desiredPort = UInt16(GatewayEnvironment.gatewayPort())
         if let desc = await PortGuardian.shared.describe(port: Int(desiredPort)),
            self.isSshProcess(desc)
@@ -46,15 +46,15 @@ actor RemoteTunnelManager {
         return nil
     }
 
-    /// Ensure an SSH tunnel is running for the gateway control port.
-    /// Returns the local forwarded port (usually the configured gateway port).
+    /// 确保网关控制端口的 SSH 隧道正在运行。
+    /// 返回本地转发的端口（通常是配置的网关端口）。
     func ensureControlTunnel() async throws -> UInt16 {
         let settings = CommandResolver.connectionSettings()
         guard settings.mode == .remote else {
             throw NSError(
                 domain: "RemoteTunnel",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Remote mode is not enabled"])
+                userInfo: [NSLocalizedDescriptionKey: "远程模式未启用"])
         }
 
         let identitySet = !settings.identity.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -118,5 +118,5 @@ actor RemoteTunnelManager {
         try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
     }
 
-    // Keep tunnel reuse lightweight; restart only when the listener disappears.
+    // 保持隧道重用轻量级;仅在监听器消失时重启。
 }

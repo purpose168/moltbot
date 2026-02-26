@@ -1,163 +1,149 @@
 ---
-summary: "Skills: managed vs workspace, gating rules, and config/env wiring"
+summary: "技能：托管 vs 工作区，门控规则，以及配置/环境连接"
 read_when:
-  - Adding or modifying skills
-  - Changing skill gating or load rules
+  - 添加或修改技能
+  - 更改技能门控或加载规则
 ---
-# Skills (Moltbot)
+# 技能（Moltbot）
 
-Moltbot uses **[AgentSkills](https://agentskills.io)-compatible** skill folders to teach the agent how to use tools. Each skill is a directory containing a `SKILL.md` with YAML frontmatter and instructions. Moltbot loads **bundled skills** plus optional local overrides, and filters them at load time based on environment, config, and binary presence.
+Moltbot 使用**[AgentSkills](https://agentskills.io)兼容**的技能文件夹来教导智能体如何使用工具。每个技能都是一个包含 `SKILL.md` 的目录，其中包含 YAML 前置元数据和指令。Moltbot 加载**捆绑技能**加上可选的本地覆盖，并在加载时根据环境、配置和二进制文件存在情况过滤它们。
 
-## Locations and precedence
+## 位置和优先级
 
-Skills are loaded from **three** places:
+技能从**三个**地方加载：
 
-1) **Bundled skills**: shipped with the install (npm package or Moltbot.app)
-2) **Managed/local skills**: `~/.clawdbot/skills`
-3) **Workspace skills**: `<workspace>/skills`
+1) **捆绑技能**：随安装一起提供（npm 包或 Moltbot.app）
+2) **托管/本地技能**：`~/.clawdbot/skills`
+3) **工作区技能**：`<workspace>/skills`
 
-If a skill name conflicts, precedence is:
+如果技能名称冲突，优先级为：
 
-`<workspace>/skills` (highest) → `~/.clawdbot/skills` → bundled skills (lowest)
+`<workspace>/skills`（最高）→ `~/.clawdbot/skills` → 捆绑技能（最低）
 
-Additionally, you can configure extra skill folders (lowest precedence) via
-`skills.load.extraDirs` in `~/.clawdbot/moltbot.json`.
+此外，您可以通过 `~/.clawdbot/moltbot.json` 中的 `skills.load.extraDirs` 配置额外的技能文件夹（最低优先级）。
 
-## Per-agent vs shared skills
+## 每个智能体的技能 vs 共享技能
 
-In **multi-agent** setups, each agent has its own workspace. That means:
+在**多智能体**设置中，每个智能体都有自己的工作区。这意味着：
 
-- **Per-agent skills** live in `<workspace>/skills` for that agent only.
-- **Shared skills** live in `~/.clawdbot/skills` (managed/local) and are visible
-  to **all agents** on the same machine.
-- **Shared folders** can also be added via `skills.load.extraDirs` (lowest
-  precedence) if you want a common skills pack used by multiple agents.
+- **每个智能体的技能** 仅存在于该智能体的 `<workspace>/skills` 中。
+- **共享技能** 存在于 `~/.clawdbot/skills`（托管/本地）中，并且对同一机器上的**所有智能体**可见。
+- 如果您希望多个智能体使用通用技能包，也可以通过 `skills.load.extraDirs` 添加共享文件夹（最低优先级）。
 
-If the same skill name exists in more than one place, the usual precedence
-applies: workspace wins, then managed/local, then bundled.
+如果同一个技能名称存在于多个地方，通常的优先级适用：工作区优先，然后是托管/本地，最后是捆绑技能。
 
-## Plugins + skills
+## 插件 + 技能
 
-Plugins can ship their own skills by listing `skills` directories in
-`moltbot.plugin.json` (paths relative to the plugin root). Plugin skills load
-when the plugin is enabled and participate in the normal skill precedence rules.
-You can gate them via `metadata.moltbot.requires.config` on the plugin’s config
-entry. See [Plugins](/plugin) for discovery/config and [Tools](/tools) for the
-tool surface those skills teach.
+插件可以通过在 `moltbot.plugin.json` 中列出 `skills` 目录来提供自己的技能（路径相对于插件根目录）。插件技能在插件启用时加载，并参与正常的技能优先级规则。
+您可以通过插件配置条目的 `metadata.moltbot.requires.config` 来限制它们。有关发现/配置，请参阅 [插件](/plugin)，有关这些技能教授的工具表面，请参阅 [工具](/tools)。
 
-## ClawdHub (install + sync)
+## ClawdHub（安装 + 同步）
 
-ClawdHub is the public skills registry for Moltbot. Browse at
-https://clawdhub.com. Use it to discover, install, update, and back up skills.
-Full guide: [ClawdHub](/tools/clawdhub).
+ClawdHub 是 Moltbot 的公共技能注册表。请在 https://clawdhub.com 浏览。使用它来发现、安装、更新和备份技能。
+完整指南：[ClawdHub](/tools/clawdhub)。
 
-Common flows:
+常见流程：
 
-- Install a skill into your workspace:
+- 将技能安装到您的工作区：
   - `clawdhub install <skill-slug>`
-- Update all installed skills:
+- 更新所有已安装的技能：
   - `clawdhub update --all`
-- Sync (scan + publish updates):
+- 同步（扫描 + 发布更新）：
   - `clawdhub sync --all`
 
-By default, `clawdhub` installs into `./skills` under your current working
-directory (or falls back to the configured Moltbot workspace). Moltbot picks
-that up as `<workspace>/skills` on the next session.
+默认情况下，`clawdhub` 安装到当前工作目录下的 `./skills`（或回退到配置的 Moltbot 工作区）。Moltbot 在下次会话中将其视为 `<workspace>/skills`。
 
-## Security notes
+## 安全注意事项
 
-- Treat third-party skills as **trusted code**. Read them before enabling.
-- Prefer sandboxed runs for untrusted inputs and risky tools. See [Sandboxing](/gateway/sandboxing).
-- `skills.entries.*.env` and `skills.entries.*.apiKey` inject secrets into the **host** process
-  for that agent turn (not the sandbox). Keep secrets out of prompts and logs.
-- For a broader threat model and checklists, see [Security](/gateway/security).
+- 将第三方技能视为**可信代码**。在启用前阅读它们。
+- 对于不受信任的输入和风险工具，优先使用沙箱运行。请参阅 [沙箱](/gateway/sandboxing)。
+- `skills.entries.*.env` 和 `skills.entries.*.apiKey` 将秘密注入到该智能体回合的**主机**进程中（而不是沙箱）。请将秘密信息排除在提示和日志之外。
+- 有关更广泛的威胁模型和清单，请参阅 [安全](/gateway/security)。
 
-## Format (AgentSkills + Pi-compatible)
+## 格式（AgentSkills + Pi 兼容）
 
-`SKILL.md` must include at least:
+`SKILL.md` 必须至少包含：
 
 ```markdown
 ---
 name: nano-banana-pro
-description: Generate or edit images via Gemini 3 Pro Image
+description: 通过 Gemini 3 Pro Image 生成或编辑图像
 ---
 ```
 
-Notes:
-- We follow the AgentSkills spec for layout/intent.
-- The parser used by the embedded agent supports **single-line** frontmatter keys only.
-- `metadata` should be a **single-line JSON object**.
-- Use `{baseDir}` in instructions to reference the skill folder path.
-- Optional frontmatter keys:
-  - `homepage` — URL surfaced as “Website” in the macOS Skills UI (also supported via `metadata.moltbot.homepage`).
-  - `user-invocable` — `true|false` (default: `true`). When `true`, the skill is exposed as a user slash command.
-  - `disable-model-invocation` — `true|false` (default: `false`). When `true`, the skill is excluded from the model prompt (still available via user invocation).
-  - `command-dispatch` — `tool` (optional). When set to `tool`, the slash command bypasses the model and dispatches directly to a tool.
-  - `command-tool` — tool name to invoke when `command-dispatch: tool` is set.
-  - `command-arg-mode` — `raw` (default). For tool dispatch, forwards the raw args string to the tool (no core parsing).
+注意：
+- 我们遵循 AgentSkills 规范的布局/意图。
+- 嵌入式智能体使用的解析器仅支持**单行**前置元数据键。
+- `metadata` 应该是**单行 JSON 对象**。
+- 在指令中使用 `{baseDir}` 引用技能文件夹路径。
+- 可选的前置元数据键：
+  - `homepage` — 在 macOS 技能 UI 中显示为 "Website" 的 URL（也通过 `metadata.moltbot.homepage` 支持）。
+  - `user-invocable` — `true|false`（默认：`true`）。当为 `true` 时，技能作为用户斜杠命令公开。
+  - `disable-model-invocation` — `true|false`（默认：`false`）。当为 `true` 时，技能从模型提示中排除（仍可通过用户调用使用）。
+  - `command-dispatch` — `tool`（可选）。当设置为 `tool` 时，斜杠命令绕过模型并直接调度到工具。
+  - `command-tool` — 当设置 `command-dispatch: tool` 时要调用的工具名称。
+  - `command-arg-mode` — `raw`（默认）。对于工具调度，将原始参数字符串转发给工具（无核心解析）。
 
-    The tool is invoked with params:
-    `{ command: "<raw args>", commandName: "<slash command>", skillName: "<skill name>" }`.
+    工具使用以下参数调用：
+    `{ command: "<raw args>", commandName: "<slash command>", skillName: "<skill name>" }`。
 
-## Gating (load-time filters)
+## 门控（加载时过滤器）
 
-Moltbot **filters skills at load time** using `metadata` (single-line JSON):
+Moltbot 使用 `metadata`（单行 JSON）**在加载时过滤技能**：
 
 ```markdown
 ---
 name: nano-banana-pro
-description: Generate or edit images via Gemini 3 Pro Image
+description: 通过 Gemini 3 Pro Image 生成或编辑图像
 metadata: {"moltbot":{"requires":{"bins":["uv"],"env":["GEMINI_API_KEY"],"config":["browser.enabled"]},"primaryEnv":"GEMINI_API_KEY"}}
 ---
 ```
 
-Fields under `metadata.moltbot`:
-- `always: true` — always include the skill (skip other gates).
-- `emoji` — optional emoji used by the macOS Skills UI.
-- `homepage` — optional URL shown as “Website” in the macOS Skills UI.
-- `os` — optional list of platforms (`darwin`, `linux`, `win32`). If set, the skill is only eligible on those OSes.
-- `requires.bins` — list; each must exist on `PATH`.
-- `requires.anyBins` — list; at least one must exist on `PATH`.
-- `requires.env` — list; env var must exist **or** be provided in config.
-- `requires.config` — list of `moltbot.json` paths that must be truthy.
-- `primaryEnv` — env var name associated with `skills.entries.<name>.apiKey`.
-- `install` — optional array of installer specs used by the macOS Skills UI (brew/node/go/uv/download).
+`metadata.moltbot` 下的字段：
+- `always: true` — 始终包含技能（跳过其他门控）。
+- `emoji` — macOS 技能 UI 使用的可选表情符号。
+- `homepage` — 在 macOS 技能 UI 中显示为 "Website" 的可选 URL。
+- `os` — 可选平台列表（`darwin`、`linux`、`win32`）。如果设置，技能仅在这些操作系统上合格。
+- `requires.bins` — 列表；每个必须在 `PATH` 上存在。
+- `requires.anyBins` — 列表；至少一个必须在 `PATH` 上存在。
+- `requires.env` — 列表；环境变量必须存在**或**在配置中提供。
+- `requires.config` — `moltbot.json` 路径列表，必须为真值。
+- `primaryEnv` — 与 `skills.entries.<name>.apiKey` 关联的环境变量名称。
+- `install` — macOS 技能 UI 使用的可选安装程序规范数组（brew/node/go/uv/download）。
 
-Note on sandboxing:
-- `requires.bins` is checked on the **host** at skill load time.
-- If an agent is sandboxed, the binary must also exist **inside the container**.
-  Install it via `agents.defaults.sandbox.docker.setupCommand` (or a custom image).
-  `setupCommand` runs once after the container is created.
-  Package installs also require network egress, a writable root FS, and a root user in the sandbox.
-  Example: the `summarize` skill (`skills/summarize/SKILL.md`) needs the `summarize` CLI
-  in the sandbox container to run there.
+关于沙箱的注意事项：
+- `requires.bins` 在技能加载时在**主机**上检查。
+- 如果智能体被沙箱化，二进制文件也必须存在于**容器内**。
+  通过 `agents.defaults.sandbox.docker.setupCommand`（或自定义镜像）安装它。
+  `setupCommand` 在容器创建后运行一次。
+  包安装还需要网络出口、可写根文件系统和沙箱中的根用户。
+  示例：`summarize` 技能（`skills/summarize/SKILL.md`）需要在沙箱容器中有 `summarize` CLI 才能在那里运行。
 
-Installer example:
+安装程序示例：
 
 ```markdown
 ---
 name: gemini
-description: Use Gemini CLI for coding assistance and Google search lookups.
-metadata: {"moltbot":{"emoji":"♊️","requires":{"bins":["gemini"]},"install":[{"id":"brew","kind":"brew","formula":"gemini-cli","bins":["gemini"],"label":"Install Gemini CLI (brew)"}]}}
+description: 使用 Gemini CLI 进行编码辅助和 Google 搜索查询。
+metadata: {"moltbot":{"emoji":"♊️","requires":{"bins":["gemini"]},"install":[{"id":"brew","kind":"brew","formula":"gemini-cli","bins":["gemini"],"label":"安装 Gemini CLI (brew)"}]}}
 ---
 ```
 
-Notes:
-- If multiple installers are listed, the gateway picks a **single** preferred option (brew when available, otherwise node).
-- If all installers are `download`, Moltbot lists each entry so you can see the available artifacts.
-- Installer specs can include `os: ["darwin"|"linux"|"win32"]` to filter options by platform.
-- Node installs honor `skills.install.nodeManager` in `moltbot.json` (default: npm; options: npm/pnpm/yarn/bun).
-  This only affects **skill installs**; the Gateway runtime should still be Node
-  (Bun is not recommended for WhatsApp/Telegram).
-- Go installs: if `go` is missing and `brew` is available, the gateway installs Go via Homebrew first and sets `GOBIN` to Homebrew’s `bin` when possible.
- - Download installs: `url` (required), `archive` (`tar.gz` | `tar.bz2` | `zip`), `extract` (default: auto when archive detected), `stripComponents`, `targetDir` (default: `~/.clawdbot/tools/<skillKey>`).
+注意：
+- 如果列出了多个安装程序，网关会选择**单个**首选选项（如果可用，选择 brew，否则选择 node）。
+- 如果所有安装程序都是 `download`，Moltbot 会列出每个条目，以便您可以看到可用的工件。
+- 安装程序规范可以包含 `os: ["darwin"|"linux"|"win32"]` 以按平台过滤选项。
+- Node 安装遵循 `moltbot.json` 中的 `skills.install.nodeManager`（默认：npm；选项：npm/pnpm/yarn/bun）。
+  这仅影响**技能安装**；网关运行时仍应是 Node
+  （对于 WhatsApp/Telegram，不推荐使用 Bun）。
+- Go 安装：如果 `go` 缺失且 `brew` 可用，网关会首先通过 Homebrew 安装 Go，并在可能的情况下将 `GOBIN` 设置为 Homebrew 的 `bin`。
+ - 下载安装：`url`（必需），`archive`（`tar.gz` | `tar.bz2` | `zip`），`extract`（默认：检测到存档时自动），`stripComponents`，`targetDir`（默认：`~/.clawdbot/tools/<skillKey>`）。
 
-If no `metadata.moltbot` is present, the skill is always eligible (unless
-disabled in config or blocked by `skills.allowBundled` for bundled skills).
+如果不存在 `metadata.moltbot`，技能始终合格（除非在配置中禁用或被捆绑技能的 `skills.allowBundled` 阻止）。
 
-## Config overrides (`~/.clawdbot/moltbot.json`)
+## 配置覆盖（`~/.clawdbot/moltbot.json`）
 
-Bundled/managed skills can be toggled and supplied with env values:
+捆绑/托管技能可以切换并提供环境值：
 
 ```json5
 {
@@ -181,45 +167,43 @@ Bundled/managed skills can be toggled and supplied with env values:
 }
 ```
 
-Note: if the skill name contains hyphens, quote the key (JSON5 allows quoted keys).
+注意：如果技能名称包含连字符，请引用键（JSON5 允许引用键）。
 
-Config keys match the **skill name** by default. If a skill defines
-`metadata.moltbot.skillKey`, use that key under `skills.entries`.
+配置键默认匹配**技能名称**。如果技能定义了 `metadata.moltbot.skillKey`，请在 `skills.entries` 下使用该键。
 
-Rules:
-- `enabled: false` disables the skill even if it’s bundled/installed.
-- `env`: injected **only if** the variable isn’t already set in the process.
-- `apiKey`: convenience for skills that declare `metadata.moltbot.primaryEnv`.
-- `config`: optional bag for custom per-skill fields; custom keys must live here.
-- `allowBundled`: optional allowlist for **bundled** skills only. If set, only
-  bundled skills in the list are eligible (managed/workspace skills unaffected).
+规则：
+- `enabled: false` 禁用技能，即使它是捆绑/已安装的。
+- `env`：**仅当**变量尚未在进程中设置时才注入。
+- `apiKey`：为声明 `metadata.moltbot.primaryEnv` 的技能提供的便利。
+- `config`：自定义每个技能字段的可选包；自定义键必须存在于此。
+- `allowBundled`：仅用于**捆绑**技能的可选允许列表。如果设置，只有列表中的捆绑技能合格（托管/工作区技能不受影响）。
 
-## Environment injection (per agent run)
+## 环境注入（每个智能体运行）
 
-When an agent run starts, Moltbot:
-1) Reads skill metadata.
-2) Applies any `skills.entries.<key>.env` or `skills.entries.<key>.apiKey` to
-   `process.env`.
-3) Builds the system prompt with **eligible** skills.
-4) Restores the original environment after the run ends.
+当智能体运行开始时，Moltbot：
+1) 读取技能元数据。
+2) 将任何 `skills.entries.<key>.env` 或 `skills.entries.<key>.apiKey` 应用到
+   `process.env`。
+3) 用**合格**技能构建系统提示。
+4) 运行结束后恢复原始环境。
 
-This is **scoped to the agent run**, not a global shell environment.
+这**仅限于智能体运行**，而不是全局 shell 环境。
 
-## Session snapshot (performance)
+## 会话快照（性能）
 
-Moltbot snapshots the eligible skills **when a session starts** and reuses that list for subsequent turns in the same session. Changes to skills or config take effect on the next new session.
+Moltbot 在**会话开始时**快照合格技能，并在同一会话的后续回合中重用该列表。技能或配置的更改在下一个新会话中生效。
 
-Skills can also refresh mid-session when the skills watcher is enabled or when a new eligible remote node appears (see below). Think of this as a **hot reload**: the refreshed list is picked up on the next agent turn.
+当技能监视器启用或出现新的合格远程节点时，技能也可以在会话中期刷新（见下文）。将此视为**热重载**：刷新后的列表在下次智能体回合中被拾取。
 
-## Remote macOS nodes (Linux gateway)
+## 远程 macOS 节点（Linux 网关）
 
-If the Gateway is running on Linux but a **macOS node** is connected **with `system.run` allowed** (Exec approvals security not set to `deny`), Moltbot can treat macOS-only skills as eligible when the required binaries are present on that node. The agent should execute those skills via the `nodes` tool (typically `nodes.run`).
+如果网关在 Linux 上运行，但**macOS 节点**已连接**且 `system.run` 允许**（Exec 批准安全性未设置为 `deny`），当所需的二进制文件存在于该节点上时，Moltbot 可以将仅 macOS 技能视为合格。智能体应通过 `nodes` 工具（通常是 `nodes.run`）执行这些技能。
 
-This relies on the node reporting its command support and on a bin probe via `system.run`. If the macOS node goes offline later, the skills remain visible; invocations may fail until the node reconnects.
+这依赖于节点报告其命令支持和通过 `system.run` 进行的二进制探测。如果 macOS 节点后来离线，技能仍然可见；调用可能会失败，直到节点重新连接。
 
-## Skills watcher (auto-refresh)
+## 技能监视器（自动刷新）
 
-By default, Moltbot watches skill folders and bumps the skills snapshot when `SKILL.md` files change. Configure this under `skills.load`:
+默认情况下，Moltbot 监视技能文件夹并在 `SKILL.md` 文件更改时更新技能快照。在 `skills.load` 下配置：
 
 ```json5
 {
@@ -232,36 +216,33 @@ By default, Moltbot watches skill folders and bumps the skills snapshot when `SK
 }
 ```
 
-## Token impact (skills list)
+## 令牌影响（技能列表）
 
-When skills are eligible, Moltbot injects a compact XML list of available skills into the system prompt (via `formatSkillsForPrompt` in `pi-coding-agent`). The cost is deterministic:
+当技能合格时，Moltbot 将可用技能的紧凑 XML 列表注入到系统提示中（通过 `pi-coding-agent` 中的 `formatSkillsForPrompt`）。成本是确定性的：
 
-- **Base overhead (only when ≥1 skill):** 195 characters.
-- **Per skill:** 97 characters + the length of the XML-escaped `<name>`, `<description>`, and `<location>` values.
+- **基础开销（仅当 ≥1 技能时）**：195 个字符。
+- **每个技能**：97 个字符 + XML 转义的 `<name>`、`<description>` 和 `<location>` 值的长度。
 
-Formula (characters):
+公式（字符）：
 
 ```
 total = 195 + Σ (97 + len(name_escaped) + len(description_escaped) + len(location_escaped))
 ```
 
-Notes:
-- XML escaping expands `& < > " '` into entities (`&amp;`, `&lt;`, etc.), increasing length.
-- Token counts vary by model tokenizer. A rough OpenAI-style estimate is ~4 chars/token, so **97 chars ≈ 24 tokens** per skill plus your actual field lengths.
+注意：
+- XML 转义将 `& < > " '` 扩展为实体（`&amp;`、`&lt;` 等），增加长度。
+- 令牌计数因模型令牌化器而异。粗略的 OpenAI 风格估计是 ~4 个字符/令牌，因此**97 个字符 ≈ 24 个令牌**每个技能加上您的实际字段长度。
 
-## Managed skills lifecycle
+## 托管技能生命周期
 
-Moltbot ships a baseline set of skills as **bundled skills** as part of the
-install (npm package or Moltbot.app). `~/.clawdbot/skills` exists for local
-overrides (for example, pinning/patching a skill without changing the bundled
-copy). Workspace skills are user-owned and override both on name conflicts.
+Moltbot 作为安装的一部分（npm 包或 Moltbot.app）提供一组基线技能作为**捆绑技能**。`~/.clawdbot/skills` 用于本地覆盖（例如，固定/修补技能而不更改捆绑副本）。工作区技能由用户拥有，并在名称冲突时覆盖两者。
 
-## Config reference
+## 配置参考
 
-See [Skills config](/tools/skills-config) for the full configuration schema.
+有关完整的配置架构，请参阅 [技能配置](/tools/skills-config)。
 
-## Looking for more skills?
+## 寻找更多技能？
 
-Browse https://clawdhub.com.
+浏览 https://clawdhub.com。
 
 ---

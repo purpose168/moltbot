@@ -10,69 +10,96 @@ import type {
 } from "./onboarding.types.js";
 import type { WizardPrompter } from "./prompts.js";
 
+/**
+ * 配置网关选项类型
+ */
 type ConfigureGatewayOptions = {
+  /** 向导流程 */
   flow: WizardFlow;
+  /** 基础配置 */
   baseConfig: MoltbotConfig;
+  /** 下一步配置 */
   nextConfig: MoltbotConfig;
+  /** 本地端口 */
   localPort: number;
+  /** 快速启动网关默认值 */
   quickstartGateway: QuickstartGatewayDefaults;
+  /** 提示器 */
   prompter: WizardPrompter;
+  /** 运行时环境 */
   runtime: RuntimeEnv;
 };
 
+/**
+ * 配置网关结果类型
+ */
 type ConfigureGatewayResult = {
+  /** 下一步配置 */
   nextConfig: MoltbotConfig;
+  /** 网关设置 */
   settings: GatewayWizardSettings;
 };
 
+/**
+ * 为入职配置网关
+ */
 export async function configureGatewayForOnboarding(
   opts: ConfigureGatewayOptions,
 ): Promise<ConfigureGatewayResult> {
   const { flow, localPort, quickstartGateway, prompter } = opts;
   let { nextConfig } = opts;
 
+  /**
+   * 网关端口
+   */
   const port =
     flow === "quickstart"
       ? quickstartGateway.port
       : Number.parseInt(
           String(
             await prompter.text({
-              message: "Gateway port",
+              message: "网关端口",
               initialValue: String(localPort),
-              validate: (value) => (Number.isFinite(Number(value)) ? undefined : "Invalid port"),
+              validate: (value) => (Number.isFinite(Number(value)) ? undefined : "无效端口"),
             }),
           ),
           10,
         );
 
+  /**
+   * 网关绑定
+   */
   let bind = (
     flow === "quickstart"
       ? quickstartGateway.bind
       : ((await prompter.select({
-          message: "Gateway bind",
+          message: "网关绑定",
           options: [
-            { value: "loopback", label: "Loopback (127.0.0.1)" },
-            { value: "lan", label: "LAN (0.0.0.0)" },
+            { value: "loopback", label: "环回 (127.0.0.1)" },
+            { value: "lan", label: "局域网 (0.0.0.0)" },
             { value: "tailnet", label: "Tailnet (Tailscale IP)" },
-            { value: "auto", label: "Auto (Loopback → LAN)" },
-            { value: "custom", label: "Custom IP" },
+            { value: "auto", label: "自动 (环回 → 局域网)" },
+            { value: "custom", label: "自定义 IP" },
           ],
         })) as "loopback" | "lan" | "auto" | "custom" | "tailnet")
   ) as "loopback" | "lan" | "auto" | "custom" | "tailnet";
 
+  /**
+   * 自定义绑定主机
+   */
   let customBindHost = quickstartGateway.customBindHost;
   if (bind === "custom") {
     const needsPrompt = flow !== "quickstart" || !customBindHost;
     if (needsPrompt) {
       const input = await prompter.text({
-        message: "Custom IP address",
+        message: "自定义 IP 地址",
         placeholder: "192.168.1.100",
         initialValue: customBindHost ?? "",
         validate: (value) => {
-          if (!value) return "IP address is required for custom bind mode";
+          if (!value) return "自定义绑定模式需要 IP 地址";
           const trimmed = value.trim();
           const parts = trimmed.split(".");
-          if (parts.length !== 4) return "Invalid IPv4 address (e.g., 192.168.1.100)";
+          if (parts.length !== 4) return "无效的 IPv4 地址（例如，192.168.1.100）";
           if (
             parts.every((part) => {
               const n = parseInt(part, 10);
@@ -80,104 +107,116 @@ export async function configureGatewayForOnboarding(
             })
           )
             return undefined;
-          return "Invalid IPv4 address (each octet must be 0-255)";
+          return "无效的 IPv4 地址（每个八位字节必须为 0-255）";
         },
       });
       customBindHost = typeof input === "string" ? input.trim() : undefined;
     }
   }
 
+  /**
+   * 网关认证模式
+   */
   let authMode = (
     flow === "quickstart"
       ? quickstartGateway.authMode
       : ((await prompter.select({
-          message: "Gateway auth",
+          message: "网关认证",
           options: [
             {
               value: "token",
-              label: "Token",
-              hint: "Recommended default (local + remote)",
+              label: "令牌",
+              hint: "推荐默认值（本地 + 远程）",
             },
-            { value: "password", label: "Password" },
+            { value: "password", label: "密码" },
           ],
           initialValue: "token",
         })) as GatewayAuthChoice)
   ) as GatewayAuthChoice;
 
+  /**
+   * Tailscale 暴露模式
+   */
   const tailscaleMode = (
     flow === "quickstart"
       ? quickstartGateway.tailscaleMode
       : ((await prompter.select({
-          message: "Tailscale exposure",
+          message: "Tailscale 暴露",
           options: [
-            { value: "off", label: "Off", hint: "No Tailscale exposure" },
+            { value: "off", label: "关闭", hint: "无 Tailscale 暴露" },
             {
               value: "serve",
-              label: "Serve",
-              hint: "Private HTTPS for your tailnet (devices on Tailscale)",
+              label: "服务",
+              hint: "为您的 tailnet（Tailscale 上的设备）提供私有 HTTPS",
             },
             {
               value: "funnel",
-              label: "Funnel",
-              hint: "Public HTTPS via Tailscale Funnel (internet)",
+              label: "漏斗",
+              hint: "通过 Tailscale Funnel 提供公共 HTTPS（互联网）",
             },
           ],
         })) as "off" | "serve" | "funnel")
   ) as "off" | "serve" | "funnel";
 
-  // Detect Tailscale binary before proceeding with serve/funnel setup.
+  // 在继续 serve/funnel 设置之前检测 Tailscale 二进制文件。
   if (tailscaleMode !== "off") {
     const tailscaleBin = await findTailscaleBinary();
     if (!tailscaleBin) {
       await prompter.note(
         [
-          "Tailscale binary not found in PATH or /Applications.",
-          "Ensure Tailscale is installed from:",
+          "在 PATH 或 /Applications 中未找到 Tailscale 二进制文件。",
+          "确保从以下位置安装 Tailscale：",
           "  https://tailscale.com/download/mac",
           "",
-          "You can continue setup, but serve/funnel will fail at runtime.",
+          "您可以继续设置，但 serve/funnel 在运行时会失败。",
         ].join("\n"),
-        "Tailscale Warning",
+        "Tailscale 警告",
       );
     }
   }
 
+  /**
+   * 退出时重置 Tailscale
+   */
   let tailscaleResetOnExit = flow === "quickstart" ? quickstartGateway.tailscaleResetOnExit : false;
   if (tailscaleMode !== "off" && flow !== "quickstart") {
     await prompter.note(
-      ["Docs:", "https://docs.molt.bot/gateway/tailscale", "https://docs.molt.bot/web"].join("\n"),
+      ["文档：", "https://docs.molt.bot/gateway/tailscale", "https://docs.molt.bot/web"].join("\n"),
       "Tailscale",
     );
     tailscaleResetOnExit = Boolean(
       await prompter.confirm({
-        message: "Reset Tailscale serve/funnel on exit?",
+        message: "退出时重置 Tailscale serve/funnel？",
         initialValue: false,
       }),
     );
   }
 
-  // Safety + constraints:
-  // - Tailscale wants bind=loopback so we never expose a non-loopback server + tailscale serve/funnel at once.
-  // - Funnel requires password auth.
+  // 安全 + 约束：
+  // - Tailscale 要求 bind=loopback，因此我们永远不会同时暴露非环回服务器和 tailscale serve/funnel。
+  // - Funnel 需要密码认证。
   if (tailscaleMode !== "off" && bind !== "loopback") {
-    await prompter.note("Tailscale requires bind=loopback. Adjusting bind to loopback.", "Note");
+    await prompter.note("Tailscale 要求 bind=loopback。将 bind 调整为 loopback。", "注意");
     bind = "loopback";
     customBindHost = undefined;
   }
 
   if (tailscaleMode === "funnel" && authMode !== "password") {
-    await prompter.note("Tailscale funnel requires password auth.", "Note");
+    await prompter.note("Tailscale funnel 需要密码认证。", "注意");
     authMode = "password";
   }
 
+  /**
+   * 网关令牌
+   */
   let gatewayToken: string | undefined;
   if (authMode === "token") {
     if (flow === "quickstart") {
       gatewayToken = quickstartGateway.token ?? randomToken();
     } else {
       const tokenInput = await prompter.text({
-        message: "Gateway token (blank to generate)",
-        placeholder: "Needed for multi-machine or non-loopback access",
+        message: "网关令牌（留空生成）",
+        placeholder: "多机器或非环回访问需要",
         initialValue: quickstartGateway.token ?? "",
       });
       gatewayToken = String(tokenInput).trim() || randomToken();
@@ -189,8 +228,8 @@ export async function configureGatewayForOnboarding(
       flow === "quickstart" && quickstartGateway.password
         ? quickstartGateway.password
         : await prompter.text({
-            message: "Gateway password",
-            validate: (value) => (value?.trim() ? undefined : "Required"),
+            message: "网关密码",
+            validate: (value) => (value?.trim() ? undefined : "必填"),
           });
     nextConfig = {
       ...nextConfig,

@@ -3,15 +3,18 @@ import Darwin
 import Foundation
 import OSLog
 
+/// 在线状态报告器
+/// 定期向控制通道发送在线状态信息
 @MainActor
 final class PresenceReporter {
     static let shared = PresenceReporter()
 
     private let logger = Logger(subsystem: "bot.molt", category: "presence")
     private var task: Task<Void, Never>?
-    private let interval: TimeInterval = 180 // a few minutes
+    private let interval: TimeInterval = 180 // 几分钟
     private let instanceId: String = InstanceIdentity.instanceId
 
+    /// 启动在线状态报告
     func start() {
         guard self.task == nil else { return }
         self.task = Task.detached { [weak self] in
@@ -24,11 +27,13 @@ final class PresenceReporter {
         }
     }
 
+    /// 停止在线状态报告
     func stop() {
         self.task?.cancel()
         self.task = nil
     }
 
+    /// 推送在线状态
     @Sendable
     private func push(reason: String) async {
         let mode = await MainActor.run { AppStateStore.shared.connectionMode.rawValue }
@@ -57,11 +62,12 @@ final class PresenceReporter {
         }
     }
 
-    /// Fire an immediate presence beacon (e.g., right after connecting).
+    /// 立即发送在线状态信标(例如,连接后立即发送)
     func sendImmediate(reason: String = "connect") {
         Task { await self.push(reason: reason) }
     }
 
+    /// 组合在线状态摘要
     private static func composePresenceSummary(mode: String, reason: String) -> String {
         let host = InstanceIdentity.displayName
         let ip = Self.primaryIPv4Address() ?? "ip-unknown"
@@ -71,6 +77,7 @@ final class PresenceReporter {
         return "Node: \(host) (\(ip)) · app \(version) · \(lastLabel) · mode \(mode) · reason \(reason)"
     }
 
+    /// 获取应用版本字符串
     private static func appVersionString() -> String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
         if let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String {
@@ -82,11 +89,13 @@ final class PresenceReporter {
         return version
     }
 
+    /// 获取平台字符串
     private static func platformString() -> String {
         let v = ProcessInfo.processInfo.operatingSystemVersion
         return "macos \(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
     }
 
+    /// 获取最后输入时间(秒)
     private static func lastInputSeconds() -> Int? {
         let anyEvent = CGEventType(rawValue: UInt32.max) ?? .null
         let seconds = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: anyEvent)
@@ -94,6 +103,7 @@ final class PresenceReporter {
         return Int(seconds.rounded())
     }
 
+    /// 获取主IPv4地址
     private static func primaryIPv4Address() -> String? {
         var addrList: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&addrList) == 0, let first = addrList else { return nil }
@@ -135,22 +145,27 @@ final class PresenceReporter {
 
 #if DEBUG
 extension PresenceReporter {
+    /// 测试组合在线状态摘要
     static func _testComposePresenceSummary(mode: String, reason: String) -> String {
         self.composePresenceSummary(mode: mode, reason: reason)
     }
 
+    /// 测试获取应用版本字符串
     static func _testAppVersionString() -> String {
         self.appVersionString()
     }
 
+    /// 测试获取平台字符串
     static func _testPlatformString() -> String {
         self.platformString()
     }
 
+    /// 测试获取最后输入时间
     static func _testLastInputSeconds() -> Int? {
         self.lastInputSeconds()
     }
 
+    /// 测试获取主IPv4地址
     static func _testPrimaryIPv4Address() -> String? {
         self.primaryIPv4Address()
     }

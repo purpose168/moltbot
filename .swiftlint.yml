@@ -1,4 +1,4 @@
-# SwiftLint configuration adapted from Peekaboo defaults (Swift 6 friendly)
+# SwiftLint 配置，改编自 Peekaboo 默认值（Swift 6 友好）
 
 included:
   - apps/macos/Sources
@@ -17,7 +17,7 @@ excluded:
   - dist
   - coverage
   - "*.playground"
-  # Generated (protocol-gen-swift.ts)
+  # 生成（protocol-gen-swift.ts）
   - apps/macos/Sources/MoltbotProtocol/GatewayModels.swift
 
 analyzer_rules:
@@ -51,14 +51,14 @@ opt_in_rules:
   - vertical_parameter_alignment_on_call
 
 disabled_rules:
-  # SwiftFormat handles these
+  # SwiftFormat 处理这些
   - trailing_whitespace
   - trailing_newline
   - trailing_comma
   - vertical_whitespace
   - indentation_width
 
-  # Style exclusions
+  # 样式排除
   - explicit_self
   - identifier_name
   - file_header

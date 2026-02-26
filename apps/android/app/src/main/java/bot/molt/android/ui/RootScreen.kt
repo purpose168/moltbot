@@ -94,37 +94,37 @@ fun RootScreen(viewModel: MainViewModel) {
     }
   val activity =
     remember(cameraHud, screenRecordActive, isForeground, statusText, voiceWakeStatusText) {
-      // Status pill owns transient activity state so it doesn't overlap the connection indicator.
+      // 状态药丸拥有瞬态活动状态,因此不会与连接指示器重叠
       if (!isForeground) {
         return@remember StatusActivity(
-          title = "Foreground required",
+          title = "需要前台", // Foreground required
           icon = Icons.Default.Report,
-          contentDescription = "Foreground required",
+          contentDescription = "需要前台", // Foreground required
         )
       }
 
       val lowerStatus = statusText.lowercase()
       if (lowerStatus.contains("repair")) {
         return@remember StatusActivity(
-          title = "Repairing…",
+          title = "正在修复…", // Repairing…
           icon = Icons.Default.Refresh,
-          contentDescription = "Repairing",
+          contentDescription = "正在修复", // Repairing
         )
       }
       if (lowerStatus.contains("pairing") || lowerStatus.contains("approval")) {
         return@remember StatusActivity(
-          title = "Approval pending",
+          title = "等待批准", // Approval pending
           icon = Icons.Default.RecordVoiceOver,
-          contentDescription = "Approval pending",
+          contentDescription = "等待批准", // Approval pending
         )
       }
-      // Avoid duplicating the primary gateway status ("Connecting…") in the activity slot.
+      // 避免在活动槽中重复主要网关状态("Connecting…")
 
       if (screenRecordActive) {
         return@remember StatusActivity(
-          title = "Recording screen…",
+          title = "正在录制屏幕…", // Recording screen…
           icon = Icons.AutoMirrored.Filled.ScreenShare,
-          contentDescription = "Recording screen",
+          contentDescription = "正在录制屏幕", // Recording screen
           tint = androidx.compose.ui.graphics.Color.Red,
         )
       }
@@ -135,26 +135,26 @@ fun RootScreen(viewModel: MainViewModel) {
             StatusActivity(
               title = hud.message,
               icon = Icons.Default.PhotoCamera,
-              contentDescription = "Taking photo",
+              contentDescription = "正在拍照", // Taking photo
             )
           CameraHudKind.Recording ->
             StatusActivity(
               title = hud.message,
               icon = Icons.Default.FiberManualRecord,
-              contentDescription = "Recording",
+              contentDescription = "正在录制", // Recording
               tint = androidx.compose.ui.graphics.Color.Red,
             )
           CameraHudKind.Success ->
             StatusActivity(
               title = hud.message,
               icon = Icons.Default.CheckCircle,
-              contentDescription = "Capture finished",
+              contentDescription = "捕获完成", // Capture finished
             )
           CameraHudKind.Error ->
             StatusActivity(
               title = hud.message,
               icon = Icons.Default.Error,
-              contentDescription = "Capture failed",
+              contentDescription = "捕获失败", // Capture failed
               tint = androidx.compose.ui.graphics.Color.Red,
             )
         }
@@ -162,17 +162,17 @@ fun RootScreen(viewModel: MainViewModel) {
 
       if (voiceWakeStatusText.contains("Microphone permission", ignoreCase = true)) {
         return@remember StatusActivity(
-          title = "Mic permission",
+          title = "麦克风权限", // Mic permission
           icon = Icons.Default.Error,
-          contentDescription = "Mic permission required",
+          contentDescription = "需要麦克风权限", // Mic permission required
         )
       }
       if (voiceWakeStatusText == "Paused") {
-        val suffix = if (!isForeground) " (background)" else ""
+        val suffix = if (!isForeground) " (后台)" else "" // (background)
         return@remember StatusActivity(
-          title = "Voice Wake paused$suffix",
+          title = "语音唤醒已暂停$suffix", // Voice Wake paused
           icon = Icons.Default.RecordVoiceOver,
-          contentDescription = "Voice Wake paused",
+          contentDescription = "语音唤醒已暂停", // Voice Wake paused
         )
       }
 
@@ -198,12 +198,12 @@ fun RootScreen(viewModel: MainViewModel) {
     CanvasView(viewModel = viewModel, modifier = Modifier.fillMaxSize())
   }
 
-  // Camera flash must be in a Popup to render above the WebView.
+  // 相机闪光灯必须在 Popup 中才能在 WebView 之上渲染
   Popup(alignment = Alignment.Center, properties = PopupProperties(focusable = false)) {
     CameraFlashOverlay(token = cameraFlashToken, modifier = Modifier.fillMaxSize())
   }
 
-  // Keep the overlay buttons above the WebView canvas (AndroidView), otherwise they may not receive touches.
+  // 保持覆盖按钮在 WebView 画布(AndroidView)之上,否则它们可能无法接收触摸事件
   Popup(alignment = Alignment.TopStart, properties = PopupProperties(focusable = false)) {
     StatusPill(
       gateway = gatewayState,
@@ -259,7 +259,7 @@ fun RootScreen(viewModel: MainViewModel) {
 
       OverlayIconButton(
         onClick = { sheet = Sheet.Settings },
-        icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
+        icon = { Icon(Icons.Default.Settings, contentDescription = "设置") }, // Settings
       )
     }
   }
@@ -324,7 +324,7 @@ private fun CanvasView(viewModel: MainViewModel, modifier: Modifier = Modifier) 
     factory = {
       WebView(context).apply {
         settings.javaScriptEnabled = true
-        // Some embedded web UIs (incl. the "background website") use localStorage/sessionStorage.
+        // 某些嵌入式 Web UI(包括"背景网站")使用 localStorage/sessionStorage
         settings.domStorageEnabled = true
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
         if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
@@ -396,7 +396,7 @@ private fun CanvasView(viewModel: MainViewModel, modifier: Modifier = Modifier) 
               return false
             }
           }
-        // Use default layer/background; avoid forcing a black fill over WebView content.
+        // 使用默认图层/背景;避免在 WebView 内容上强制黑色填充
 
         val a2uiBridge =
           CanvasA2UIActionBridge { payload ->

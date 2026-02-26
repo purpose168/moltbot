@@ -75,7 +75,7 @@ vi.mock("../tui/tui.js", () => ({
 }));
 
 describe("runOnboardingWizard", () => {
-  it("exits when config is invalid", async () => {
+  it("当配置无效时退出", async () => {
     readConfigFileSnapshot.mockResolvedValueOnce({
       path: "/tmp/.clawdbot/moltbot.json",
       exists: true,
@@ -128,7 +128,7 @@ describe("runOnboardingWizard", () => {
     expect(prompter.outro).toHaveBeenCalled();
   });
 
-  it("skips prompts and setup steps when flags are set", async () => {
+  it("当设置了标志时跳过提示和设置步骤", async () => {
     const select: WizardPrompter["select"] = vi.fn(async () => "quickstart");
     const multiselect: WizardPrompter["multiselect"] = vi.fn(async () => []);
     const prompter: WizardPrompter = {
@@ -171,14 +171,14 @@ describe("runOnboardingWizard", () => {
     expect(runTui).not.toHaveBeenCalled();
   });
 
-  it("launches TUI without auto-delivery when hatching", async () => {
+  it("孵化时启动 TUI 但不自动传递", async () => {
     runTui.mockClear();
 
     const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "moltbot-onboard-"));
     await fs.writeFile(path.join(workspaceDir, DEFAULT_BOOTSTRAP_FILENAME), "{}");
 
     const select: WizardPrompter["select"] = vi.fn(async (opts) => {
-      if (opts.message === "How do you want to hatch your bot?") return "tui";
+      if (opts.message === "您想如何孵化您的机器人？") return "tui";
       return "quickstart";
     });
 
@@ -220,20 +220,20 @@ describe("runOnboardingWizard", () => {
     expect(runTui).toHaveBeenCalledWith(
       expect.objectContaining({
         deliver: false,
-        message: "Wake up, my friend!",
+        message: "醒来吧，我的朋友！",
       }),
     );
 
     await fs.rm(workspaceDir, { recursive: true, force: true });
   });
 
-  it("offers TUI hatch even without BOOTSTRAP.md", async () => {
+  it("即使没有 BOOTSTRAP.md 也提供 TUI 孵化选项", async () => {
     runTui.mockClear();
 
     const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "moltbot-onboard-"));
 
     const select: WizardPrompter["select"] = vi.fn(async (opts) => {
-      if (opts.message === "How do you want to hatch your bot?") return "tui";
+      if (opts.message === "您想如何孵化您的机器人？") return "tui";
       return "quickstart";
     });
 
@@ -282,7 +282,7 @@ describe("runOnboardingWizard", () => {
     await fs.rm(workspaceDir, { recursive: true, force: true });
   });
 
-  it("shows the web search hint at the end of onboarding", async () => {
+  it("在入职结束时显示 Web 搜索提示", async () => {
     const prevBraveKey = process.env.BRAVE_API_KEY;
     delete process.env.BRAVE_API_KEY;
 
@@ -322,7 +322,7 @@ describe("runOnboardingWizard", () => {
 
       const calls = (note as unknown as { mock: { calls: unknown[][] } }).mock.calls;
       expect(calls.length).toBeGreaterThan(0);
-      expect(calls.some((call) => call?.[1] === "Web search (optional)")).toBe(true);
+      expect(calls.some((call) => call?.[1] === "Web 搜索（可选）")).toBe(true);
     } finally {
       if (prevBraveKey === undefined) {
         delete process.env.BRAVE_API_KEY;

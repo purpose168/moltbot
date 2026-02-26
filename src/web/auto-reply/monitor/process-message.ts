@@ -1,3 +1,12 @@
+/**
+ * Web 自动回复消息处理模块
+ *
+ * @description
+ * 此模块是 WhatsApp Web 自动回复系统的核心处理单元，
+ * 负责处理入站消息、构建回复上下文、生成回复内容、
+ * 以及发送回复消息的完整流程。
+ */
+
 import { resolveIdentityNamePrefix } from "../../../agents/identity.js";
 import { resolveChunkMode, resolveTextChunkLimit } from "../../../auto-reply/chunk.js";
 import {
@@ -38,14 +47,37 @@ import { formatGroupMembers } from "./group-members.js";
 import { trackBackgroundTask, updateLastRouteInBackground } from "./last-route.js";
 import { buildInboundLine } from "./message-line.js";
 
+/**
+ * 群组历史记录条目类型
+ *
+ * @description
+ * 定义了群组消息历史记录的结构，
+ * 包含发送者、消息内容、时间戳等信息，
+ * 用于构建群组消息的上下文。
+ */
 export type GroupHistoryEntry = {
+  /** 发送者名称或标识符 */
   sender: string;
+  /** 消息内容 */
   body: string;
+  /** 消息时间戳（毫秒） */
   timestamp?: number;
+  /** 消息 ID */
   id?: string;
+  /** 发送者 JID */
   senderJid?: string;
 };
 
+/**
+ * 标准化允许列表为 E164 格式
+ *
+ * @description
+ * 将允许列表中的值转换为标准化的 E164 格式，
+ * 过滤掉空值和通配符，确保格式一致性。
+ *
+ * @param values - 允许列表值数组
+ * @returns 标准化后的 E164 格式字符串数组
+ */
 function normalizeAllowFromE164(values: Array<string | number> | undefined): string[] {
   const list = Array.isArray(values) ? values : [];
   return list
@@ -55,30 +87,50 @@ function normalizeAllowFromE164(values: Array<string | number> | undefined): str
     .filter((entry): entry is string => Boolean(entry));
 }
 
+/**
+ * 解析 WhatsApp 命令授权
+ *
+ * @description
+ * 检查发送者是否有权限执行命令，
+ * 根据配置的访问控制策略进行判断，
+ * 支持群组和私聊的不同授权逻辑。
+ *
+ * @param params - 参数对象
+ * @param params.cfg - 配置对象
+ * @param params.msg - Web 入站消息
+ * @returns 是否授权执行命令
+ */
 async function resolveWhatsAppCommandAuthorized(params: {
   cfg: ReturnType<typeof loadConfig>;
   msg: WebInboundMsg;
 }): Promise<boolean> {
+  // 检查是否使用访问组
   const useAccessGroups = params.cfg.commands?.useAccessGroups !== false;
   if (!useAccessGroups) return true;
 
+  // 检查是否为群组消息
   const isGroup = params.msg.chatType === "group";
+
+  // 获取发送者 E164 格式电话号码
   const senderE164 = normalizeE164(
     isGroup ? (params.msg.senderE164 ?? "") : (params.msg.senderE164 ?? params.msg.from ?? ""),
   );
   if (!senderE164) return false;
 
+  // 获取配置的允许列表
   const configuredAllowFrom = params.cfg.channels?.whatsapp?.allowFrom ?? [];
   const configuredGroupAllowFrom =
     params.cfg.channels?.whatsapp?.groupAllowFrom ??
     (configuredAllowFrom.length > 0 ? configuredAllowFrom : undefined);
 
+  // 群组消息授权检查
   if (isGroup) {
     if (!configuredGroupAllowFrom || configuredGroupAllowFrom.length === 0) return false;
     if (configuredGroupAllowFrom.some((v) => String(v).trim() === "*")) return true;
     return normalizeAllowFromE164(configuredGroupAllowFrom).includes(senderE164);
   }
 
+  // 私聊消息授权检查
   const storeAllowFrom = await readChannelAllowFromStore("whatsapp").catch(() => []);
   const combinedAllowFrom = Array.from(
     new Set([...(configuredAllowFrom ?? []), ...storeAllowFrom]),
@@ -93,6 +145,24 @@ async function resolveWhatsAppCommandAuthorized(params: {
   return normalizeAllowFromE164(allowFrom).includes(senderE164);
 }
 
+/**
+ * 处理 WhatsApp Web 入站消息
+ *
+ * @description
+ * 此函数是自动回复系统的核心处理逻辑，
+ * 负责：
+ * 1. 构建消息上下文
+ * 2. 处理群组历史记录
+ * 3. 检测回声消息
+ * 4. 发送确认反应
+ * 5. 记录消息日志
+ * 6. 构建回复上下文
+ * 7. 生成并发送回复
+ * 8. 处理背景任务
+ *
+ * @param params - 处理参数
+ * @returns 是否发送了回复
+ */
 export async function processMessage(params: {
   cfg: ReturnType<typeof loadConfig>;
   msg: WebInboundMsg;
@@ -121,15 +191,24 @@ export async function processMessage(params: {
   groupHistory?: GroupHistoryEntry[];
   suppressGroupHistoryClear?: boolean;
 }) {
+  // 获取对话 ID
   const conversationId = params.msg.conversationId ?? params.msg.from;
+
+  // 解析存储路径
   const storePath = resolveStorePath(params.cfg.session?.store, {
     agentId: params.route.agentId,
   });
+
+  // 解析信封格式选项
   const envelopeOptions = resolveEnvelopeFormatOptions(params.cfg);
+
+  // 读取会话更新时间
   const previousTimestamp = readSessionUpdatedAt({
     storePath,
     sessionKey: params.route.sessionKey,
   });
+
+  // 构建入站消息行
   let combinedBody = buildInboundLine({
     cfg: params.cfg,
     msg: params.msg,
@@ -137,17 +216,23 @@ export async function processMessage(params: {
     previousTimestamp,
     envelope: envelopeOptions,
   });
+
+  // 是否清除群组历史记录
   let shouldClearGroupHistory = false;
 
+  // 处理群组消息历史记录
   if (params.msg.chatType === "group") {
     const history = params.groupHistory ?? params.groupHistories.get(params.groupHistoryKey) ?? [];
     if (history.length > 0) {
+      // 构建历史记录条目
       const historyEntries: HistoryEntry[] = history.map((m) => ({
         sender: m.sender,
         body: m.body,
         timestamp: m.timestamp,
         messageId: m.id,
       }));
+
+      // 构建历史上下文
       combinedBody = buildHistoryContextFromEntries({
         entries: historyEntries,
         currentMessage: combinedBody,
@@ -171,7 +256,7 @@ export async function processMessage(params: {
     shouldClearGroupHistory = !(params.suppressGroupHistoryClear ?? false);
   }
 
-  // Echo detection uses combined body so we don't respond twice.
+  // 回声检测，避免重复回复
   const combinedEchoKey = params.buildCombinedEchoKey({
     sessionKey: params.route.sessionKey,
     combinedBody,
@@ -182,7 +267,7 @@ export async function processMessage(params: {
     return false;
   }
 
-  // Send ack reaction immediately upon message receipt (post-gating)
+  // 收到消息后立即发送确认反应
   maybeSendAckReaction({
     cfg: params.cfg,
     msg: params.msg,
@@ -195,7 +280,10 @@ export async function processMessage(params: {
     warn: params.replyLogger.warn.bind(params.replyLogger),
   });
 
+  // 生成关联 ID
   const correlationId = params.msg.id ?? newConnectionId();
+
+  // 记录入站消息日志
   params.replyLogger.info(
     {
       connectionId: params.connectionId,
@@ -209,6 +297,7 @@ export async function processMessage(params: {
     "inbound web message",
   );
 
+  // 记录 WhatsApp 入站消息日志
   const fromDisplay = params.msg.chatType === "group" ? conversationId : params.msg.from;
   const kindLabel = params.msg.mediaType ? `, ${params.msg.mediaType}` : "";
   whatsappInboundLog.info(
@@ -218,16 +307,18 @@ export async function processMessage(params: {
     whatsappInboundLog.debug(`Inbound body: ${elide(combinedBody, 400)}`);
   }
 
+  // 解析私聊路由目标
   const dmRouteTarget =
     params.msg.chatType !== "group"
       ? (() => {
           if (params.msg.senderE164) return normalizeE164(params.msg.senderE164);
-          // In direct chats, `msg.from` is already the canonical conversation id.
+          // 在直接聊天中，`msg.from` 已经是规范的对话 ID
           if (params.msg.from.includes("@")) return jidToE164(params.msg.from);
           return normalizeE164(params.msg.from);
         })()
       : undefined;
 
+  // 解析配置参数
   const textLimit = params.maxMediaTextChunkLimit ?? resolveTextChunkLimit(params.cfg, "whatsapp");
   const chunkMode = resolveChunkMode(params.cfg, "whatsapp", params.route.accountId);
   const tableMode = resolveMarkdownTableMode({
@@ -235,26 +326,37 @@ export async function processMessage(params: {
     channel: "whatsapp",
     accountId: params.route.accountId,
   });
+
+  // 状态变量
   let didLogHeartbeatStrip = false;
   let didSendReply = false;
+
+  // 检查命令授权
   const commandAuthorized = shouldComputeCommandAuthorized(params.msg.body, params.cfg)
     ? await resolveWhatsAppCommandAuthorized({ cfg: params.cfg, msg: params.msg })
     : undefined;
+
+  // 构建回复前缀上下文
   const configuredResponsePrefix = params.cfg.messages?.responsePrefix;
   const prefixContext = createReplyPrefixContext({
     cfg: params.cfg,
     agentId: params.route.agentId,
   });
+
+  // 检查是否为自聊模式
   const isSelfChat =
     params.msg.chatType !== "group" &&
     Boolean(params.msg.selfE164) &&
     normalizeE164(params.msg.from) === normalizeE164(params.msg.selfE164 ?? "");
+
+  // 确定回复前缀
   const responsePrefix =
     prefixContext.responsePrefix ??
     (configuredResponsePrefix === undefined && isSelfChat
       ? (resolveIdentityNamePrefix(params.cfg, params.route.agentId) ?? "[moltbot]")
       : undefined);
 
+  // 构建入站上下文
   const ctxPayload = finalizeInboundContext({
     Body: combinedBody,
     RawBody: params.msg.body,
@@ -290,6 +392,7 @@ export async function processMessage(params: {
     OriginatingTo: params.msg.from,
   });
 
+  // 更新最后路由信息
   if (dmRouteTarget) {
     updateLastRouteInBackground({
       cfg: params.cfg,
@@ -304,6 +407,7 @@ export async function processMessage(params: {
     });
   }
 
+  // 记录会话元数据
   const metaTask = recordSessionMetaFromInbound({
     storePath,
     sessionKey: params.route.sessionKey,
@@ -320,6 +424,7 @@ export async function processMessage(params: {
   });
   trackBackgroundTask(params.backgroundTasks, metaTask);
 
+  // 分发回复
   const { queuedFinal } = await dispatchReplyWithBufferedBlockDispatcher({
     ctx: ctxPayload,
     cfg: params.cfg,
@@ -334,6 +439,7 @@ export async function processMessage(params: {
         }
       },
       deliver: async (payload: ReplyPayload, info) => {
+        // 发送 Web 回复
         await deliverWebReply({
           replyResult: payload,
           msg: params.msg,
@@ -342,11 +448,14 @@ export async function processMessage(params: {
           chunkMode,
           replyLogger: params.replyLogger,
           connectionId: params.connectionId,
-          // Tool + block updates are noisy; skip their log lines.
+          // 工具和块更新比较嘈杂，跳过它们的日志行
           skipLog: info.kind !== "final",
           tableMode,
         });
+
         didSendReply = true;
+
+        // 记录发送的文本
         if (info.kind === "tool") {
           params.rememberSentText(payload.text, {});
           return;
@@ -357,6 +466,8 @@ export async function processMessage(params: {
           combinedBodySessionKey: params.route.sessionKey,
           logVerboseMessage: shouldLog,
         });
+
+        // 记录最终回复日志
         if (info.kind === "final") {
           const fromDisplay =
             params.msg.chatType === "group" ? conversationId : (params.msg.from ?? "unknown");
@@ -369,6 +480,7 @@ export async function processMessage(params: {
         }
       },
       onError: (err, info) => {
+        // 记录错误
         const label =
           info.kind === "tool"
             ? "tool update"
@@ -390,6 +502,7 @@ export async function processMessage(params: {
     },
   });
 
+  // 处理群组历史记录清除
   if (!queuedFinal) {
     if (shouldClearGroupHistory) {
       params.groupHistories.set(params.groupHistoryKey, []);
@@ -398,6 +511,7 @@ export async function processMessage(params: {
     return false;
   }
 
+  // 清除群组历史记录
   if (shouldClearGroupHistory) {
     params.groupHistories.set(params.groupHistoryKey, []);
   }

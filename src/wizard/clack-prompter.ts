@@ -17,14 +17,20 @@ import { theme } from "../terminal/theme.js";
 import type { WizardProgress, WizardPrompter } from "./prompts.js";
 import { WizardCancelledError } from "./prompts.js";
 
+/**
+ * 保护取消操作
+ */
 function guardCancel<T>(value: T | symbol): T {
   if (isCancel(value)) {
-    cancel(stylePromptTitle("Setup cancelled.") ?? "Setup cancelled.");
+    cancel(stylePromptTitle("设置已取消。") ?? "设置已取消。");
     throw new WizardCancelledError();
   }
   return value as T;
 }
 
+/**
+ * 创建 Clack 提示器
+ */
 export function createClackPrompter(): WizardPrompter {
   return {
     intro: async (title) => {

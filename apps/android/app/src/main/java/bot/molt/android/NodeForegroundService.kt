@@ -20,6 +20,10 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
+/**
+ * 节点前台服务
+ * 负责显示持久通知以保持节点连接活跃
+ */
 class NodeForegroundService : Service() {
   private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
   private var notificationJob: Job? = null
@@ -28,11 +32,14 @@ class NodeForegroundService : Service() {
 
   override fun onCreate() {
     super.onCreate()
+    // 确保通知通道已创建
     ensureChannel()
-    val initial = buildNotification(title = "Moltbot Node", text = "Starting…")
+    // 创建初始通知
+    val initial = buildNotification(title = "Moltbot 节点", text = "启动中…")
     startForegroundWithTypes(notification = initial, requiresMic = false)
 
     val runtime = (application as NodeApp).runtime
+    // 监听状态变化并更新通知
     notificationJob =
       scope.launch {
         combine(
@@ -44,15 +51,16 @@ class NodeForegroundService : Service() {
         ) { status, server, connected, voiceMode, voiceListening ->
           Quint(status, server, connected, voiceMode, voiceListening)
         }.collect { (status, server, connected, voiceMode, voiceListening) ->
-          val title = if (connected) "Moltbot Node · Connected" else "Moltbot Node"
+          val title = if (connected) "Moltbot 节点 · 已连接" else "Moltbot 节点"
           val voiceSuffix =
             if (voiceMode == VoiceWakeMode.Always) {
-              if (voiceListening) " · Voice Wake: Listening" else " · Voice Wake: Paused"
+              if (voiceListening) " · 语音唤醒: 监听中" else " · 语音唤醒: 已暂停"
             } else {
               ""
             }
           val text = (server?.let { "$status · $it" } ?: status) + voiceSuffix
 
+          // 检查是否需要麦克风权限
           val requiresMic =
             voiceMode == VoiceWakeMode.Always && hasRecordAudioPermission()
           startForegroundWithTypes(
@@ -66,12 +74,13 @@ class NodeForegroundService : Service() {
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     when (intent?.action) {
       ACTION_STOP -> {
+        // 处理停止操作
         (application as NodeApp).runtime.disconnect()
         stopSelf()
         return START_NOT_STICKY
       }
     }
-    // Keep running; connection is managed by NodeRuntime (auto-reconnect + manual).
+    // 保持运行;连接由NodeRuntime管理(自动重连+手动)
     return START_STICKY
   }
 
@@ -83,20 +92,26 @@ class NodeForegroundService : Service() {
 
   override fun onBind(intent: Intent?) = null
 
+  /**
+   * 确保通知通道已创建
+   */
   private fun ensureChannel() {
     val mgr = getSystemService(NotificationManager::class.java)
     val channel =
       NotificationChannel(
         CHANNEL_ID,
-        "Connection",
+        "连接",
         NotificationManager.IMPORTANCE_LOW,
       ).apply {
-        description = "Moltbot node connection status"
+        description = "Moltbot 节点连接状态"
         setShowBadge(false)
       }
     mgr.createNotificationChannel(channel)
   }
 
+  /**
+   * 构建通知
+   */
   private fun buildNotification(title: String, text: String): Notification {
     val launchIntent = Intent(this, MainActivity::class.java).apply {
       flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -126,15 +141,21 @@ class NodeForegroundService : Service() {
       .setOngoing(true)
       .setOnlyAlertOnce(true)
       .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-      .addAction(0, "Disconnect", stopPending)
+      .addAction(0, "断开连接", stopPending)
       .build()
   }
 
+  /**
+   * 更新通知
+   */
   private fun updateNotification(notification: Notification) {
     val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     mgr.notify(NOTIFICATION_ID, notification)
   }
 
+  /**
+   * 使用指定类型启动前台服务
+   */
   private fun startForegroundWithTypes(notification: Notification, requiresMic: Boolean) {
     if (didStartForeground && requiresMic == lastRequiresMic) {
       updateNotification(notification)
@@ -152,11 +173,14 @@ class NodeForegroundService : Service() {
     didStartForeground = true
   }
 
+  /**
+   * 检查是否有录音权限
+   */
   private fun hasRecordAudioPermission(): Boolean {
     return (
       ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
         PackageManager.PERMISSION_GRANTED
-      )
+    )
   }
 
   companion object {
@@ -165,11 +189,17 @@ class NodeForegroundService : Service() {
 
     private const val ACTION_STOP = "bot.molt.android.action.STOP"
 
+    /**
+     * 启动前台服务
+     */
     fun start(context: Context) {
       val intent = Intent(context, NodeForegroundService::class.java)
       context.startForegroundService(intent)
     }
 
+    /**
+     * 停止前台服务
+     */
     fun stop(context: Context) {
       val intent = Intent(context, NodeForegroundService::class.java).setAction(ACTION_STOP)
       context.startService(intent)
@@ -177,4 +207,7 @@ class NodeForegroundService : Service() {
   }
 }
 
+/**
+ * 五元组数据类
+ */
 private data class Quint<A, B, C, D, E>(val first: A, val second: B, val third: C, val fourth: D, val fifth: E)

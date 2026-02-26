@@ -4,62 +4,91 @@ import Observation
 import SwiftUI
 import UIKit
 
+/// NodeAppModel 是应用的核心模型类，管理应用的状态和功能
 @MainActor
 @Observable
 final class NodeAppModel {
+    /// 相机HUD的类型
     enum CameraHUDKind {
-        case photo
-        case recording
-        case success
-        case error
+        case photo        // 拍照
+        case recording    // 录制
+        case success      // 成功
+        case error        // 错误
     }
 
+    /// 应用是否在后台运行
     var isBackgrounded: Bool = false
+    /// 屏幕控制器
     let screen = ScreenController()
+    /// 相机控制器
     let camera = CameraController()
+    /// 屏幕录制服务
     private let screenRecorder = ScreenRecordService()
-    var gatewayStatusText: String = "Offline"
+    /// 网关状态文本
+    var gatewayStatusText: String = "离线"
+    /// 网关服务器名称
     var gatewayServerName: String?
+    /// 网关远程地址
     var gatewayRemoteAddress: String?
+    /// 已连接的网关ID
     var connectedGatewayID: String?
+    /// 边框颜色的十六进制值
     var seamColorHex: String?
+    /// 主会话密钥
     var mainSessionKey: String = "main"
 
+    /// 网关会话
     private let gateway = GatewayNodeSession()
+    /// 网关任务
     private var gatewayTask: Task<Void, Never>?
+    /// 语音唤醒同步任务
     private var voiceWakeSyncTask: Task<Void, Never>?
+    /// 相机HUD dismiss任务
     @ObservationIgnored private var cameraHUDDismissTask: Task<Void, Never>?
+    /// 语音唤醒管理器
     let voiceWake = VoiceWakeManager()
+    /// 对话模式管理器
     let talkMode = TalkModeManager()
+    /// 位置服务
     private let locationService = LocationService()
+    /// 上次自动A2UI URL
     private var lastAutoA2uiURL: String?
 
+    /// 网关是否已连接
     private var gatewayConnected = false
+    /// 网关会话的只读访问
     var gatewaySession: GatewayNodeSession { self.gateway }
 
+    /// 相机HUD文本
     var cameraHUDText: String?
+    /// 相机HUD类型
     var cameraHUDKind: CameraHUDKind?
+    /// 相机闪光灯随机数
     var cameraFlashNonce: Int = 0
+    /// 屏幕录制是否活跃
     var screenRecordActive: Bool = false
 
+    /// 初始化方法
     init() {
+        // 配置语音唤醒
         self.voiceWake.configure { [weak self] cmd in
             guard let self else { return }
             let sessionKey = await MainActor.run { self.mainSessionKey }
             do {
                 try await self.sendVoiceTranscript(text: cmd, sessionKey: sessionKey)
             } catch {
-                // Best-effort only.
+                // 仅尽力而为
             }
         }
 
+        // 从用户默认设置中获取语音唤醒和对话模式的启用状态
         let enabled = UserDefaults.standard.bool(forKey: "voiceWake.enabled")
         self.voiceWake.setEnabled(enabled)
         self.talkMode.attachGateway(self.gateway)
         let talkEnabled = UserDefaults.standard.bool(forKey: "talk.enabled")
         self.talkMode.setEnabled(talkEnabled)
 
-        // Wire up deep links from canvas taps
+        // 连接来自canvas点击的深度链接
         self.screen.onDeepLink = { [weak self] url in
             guard let self else { return }
             Task { @MainActor in
@@ -67,7 +96,7 @@ final class NodeAppModel {
             }
         }
 
-        // Wire up A2UI action clicks (buttons, etc.)
+        // 连接A2UI操作点击（按钮等）
         self.screen.onA2UIAction = { [weak self] body in
             guard let self else { return }
             Task { @MainActor in
@@ -76,6 +105,7 @@ final class NodeAppModel {
         }
     }
 
+    /// 处理Canvas A2UI操作
     private func handleCanvasA2UIAction(body: [String: Any]) async {
         let userActionAny = body["userAction"] ?? body
         let userAction: [String: Any] = {
@@ -123,7 +153,7 @@ final class NodeAppModel {
         var errorText: String?
         if await !self.isGatewayConnected() {
             ok = false
-            errorText = "gateway not connected"
+            errorText = "网关未连接"
         } else {
             do {
                 try await self.sendAgentRequest(link: AgentDeepLink(
@@ -146,10 +176,11 @@ final class NodeAppModel {
         do {
             _ = try await self.screen.eval(javaScript: js)
         } catch {
-            // ignore
+            // 忽略错误
         }
     }
 
+    /// 解析A2UI主机URL
     private func resolveA2UIHostURL() async -> String? {
         guard let raw = await self.gateway.currentCanvasHostUrl() else { return nil }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -157,6 +188,7 @@ final class NodeAppModel {
         return base.appendingPathComponent("__moltbot__/a2ui/").absoluteString + "?platform=ios"
     }
 
+    /// 在连接时如果需要显示A2UI
     private func showA2UIOnConnectIfNeeded() async {
         guard let a2uiUrl = await self.resolveA2UIHostURL() else { return }
         let current = self.screen.urlString.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -166,11 +198,13 @@ final class NodeAppModel {
         }
     }
 
+    /// 在断开连接时显示本地画布
     private func showLocalCanvasOnDisconnect() {
         self.lastAutoA2uiURL = nil
         self.screen.showDefaultCanvas()
     }
 
+    /// 设置场景阶段
     func setScenePhase(_ phase: ScenePhase) {
         switch phase {
         case .background:
@@ -182,14 +216,17 @@ final class NodeAppModel {
         }
     }
 
+    /// 设置语音唤醒是否启用
     func setVoiceWakeEnabled(_ enabled: Bool) {
         self.voiceWake.setEnabled(enabled)
     }
 
+    /// 设置对话模式是否启用
     func setTalkEnabled(_ enabled: Bool) {
         self.talkMode.setEnabled(enabled)
     }
 
+    /// 请求位置权限
     func requestLocationPermissions(mode: MoltbotLocationMode) async -> Bool {
         guard mode != .off else { return true }
         let status = await self.locationService.ensureAuthorization(mode: mode)
@@ -203,6 +240,7 @@ final class NodeAppModel {
         }
     }
 
+    /// 连接到网关
     func connectToGateway(
         url: URL,
         gatewayStableID: String,
@@ -226,9 +264,9 @@ final class NodeAppModel {
             while !Task.isCancelled {
                 await MainActor.run {
                     if attempt == 0 {
-                        self.gatewayStatusText = "Connecting…"
+                        self.gatewayStatusText = "连接中..."
                     } else {
-                        self.gatewayStatusText = "Reconnecting…"
+                        self.gatewayStatusText = "重新连接中..."
                     }
                     self.gatewayServerName = nil
                     self.gatewayRemoteAddress = nil
@@ -244,8 +282,8 @@ final class NodeAppModel {
                         onConnected: { [weak self] in
                             guard let self else { return }
                             await MainActor.run {
-                                self.gatewayStatusText = "Connected"
-                                self.gatewayServerName = url.host ?? "gateway"
+                                self.gatewayStatusText = "已连接"
+                                self.gatewayServerName = url.host ?? "网关"
                                 self.gatewayConnected = true
                             }
                             if let addr = await self.gateway.currentRemoteAddress() {
@@ -260,11 +298,11 @@ final class NodeAppModel {
                         onDisconnected: { [weak self] reason in
                             guard let self else { return }
                             await MainActor.run {
-                                self.gatewayStatusText = "Disconnected"
+                                self.gatewayStatusText = "已断开"
                                 self.gatewayRemoteAddress = nil
                                 self.gatewayConnected = false
                                 self.showLocalCanvasOnDisconnect()
-                                self.gatewayStatusText = "Disconnected: \(reason)"
+                                self.gatewayStatusText = "已断开: \(reason)"
                             }
                         },
                         onInvoke: { [weak self] req in
@@ -274,7 +312,7 @@ final class NodeAppModel {
                                     ok: false,
                                     error: MoltbotNodeError(
                                         code: .unavailable,
-                                        message: "UNAVAILABLE: node not ready"))
+                                        message: "UNAVAILABLE: 节点未就绪"))
                             }
                             return await self.handleInvoke(req)
                         })
@@ -286,7 +324,7 @@ final class NodeAppModel {
                     if Task.isCancelled { break }
                     attempt += 1
                     await MainActor.run {
-                        self.gatewayStatusText = "Gateway error: \(error.localizedDescription)"
+                        self.gatewayStatusText = "网关错误: \(error.localizedDescription)"
                         self.gatewayServerName = nil
                         self.gatewayRemoteAddress = nil
                         self.gatewayConnected = false
@@ -298,7 +336,7 @@ final class NodeAppModel {
             }
 
             await MainActor.run {
-                self.gatewayStatusText = "Offline"
+                self.gatewayStatusText = "离线"
                 self.gatewayServerName = nil
                 self.gatewayRemoteAddress = nil
                 self.connectedGatewayID = nil
@@ -313,13 +351,14 @@ final class NodeAppModel {
         }
     }
 
+    /// 断开网关连接
     func disconnectGateway() {
         self.gatewayTask?.cancel()
         self.gatewayTask = nil
         self.voiceWakeSyncTask?.cancel()
         self.voiceWakeSyncTask = nil
         Task { await self.gateway.disconnect() }
-        self.gatewayStatusText = "Offline"
+        self.gatewayStatusText = "离线"
         self.gatewayServerName = nil
         self.gatewayRemoteAddress = nil
         self.connectedGatewayID = nil
@@ -332,6 +371,7 @@ final class NodeAppModel {
         self.showLocalCanvasOnDisconnect()
     }
 
+    /// 应用主会话密钥
     private func applyMainSessionKey(_ key: String?) {
         let trimmed = (key ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -342,12 +382,15 @@ final class NodeAppModel {
         self.talkMode.updateMainSessionKey(trimmed)
     }
 
+    /// 边框颜色
     var seamColor: Color {
         Self.color(fromHex: self.seamColorHex) ?? Self.defaultSeamColor
     }
 
+    /// 默认边框颜色
     private static let defaultSeamColor = Color(red: 79 / 255.0, green: 122 / 255.0, blue: 154 / 255.0)
 
+    /// 从十六进制字符串创建颜色
     private static func color(fromHex raw: String?) -> Color? {
         let trimmed = (raw ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
@@ -359,6 +402,7 @@ final class NodeAppModel {
         return Color(red: r, green: g, blue: b)
     }
 
+    /// 从网关刷新品牌设置
     private func refreshBrandingFromGateway() async {
         do {
             let res = try await self.gateway.request(method: "config.get", paramsJSON: "{}", timeoutSeconds: 8)
@@ -376,10 +420,11 @@ final class NodeAppModel {
                 }
             }
         } catch {
-            // ignore
+            // 忽略错误
         }
     }
 
+    /// 设置全局唤醒词
     func setGlobalWakeWords(_ words: [String]) async {
         let sanitized = VoiceWakePreferences.sanitizeTriggerWords(words)
 
@@ -394,10 +439,11 @@ final class NodeAppModel {
         do {
             _ = try await self.gateway.request(method: "voicewake.set", paramsJSON: json, timeoutSeconds: 12)
         } catch {
-            // Best-effort only.
+            // 仅尽力而为
         }
     }
 
+    /// 开始语音唤醒同步
     private func startVoiceWakeSync() async {
         self.voiceWakeSyncTask?.cancel()
         self.voiceWakeSyncTask = Task { [weak self] in
@@ -418,20 +464,22 @@ final class NodeAppModel {
         }
     }
 
+    /// 从网关刷新唤醒词
     private func refreshWakeWordsFromGateway() async {
         do {
             let data = try await self.gateway.request(method: "voicewake.get", paramsJSON: "{}", timeoutSeconds: 8)
             guard let triggers = VoiceWakePreferences.decodeGatewayTriggers(from: data) else { return }
             VoiceWakePreferences.saveTriggerWords(triggers)
         } catch {
-            // Best-effort only.
+            // 仅尽力而为
         }
     }
 
+    /// 发送语音转录
     func sendVoiceTranscript(text: String, sessionKey: String?) async throws {
         if await !self.isGatewayConnected() {
             throw NSError(domain: "Gateway", code: 10, userInfo: [
-                NSLocalizedDescriptionKey: "Gateway not connected",
+                NSLocalizedDescriptionKey: "网关未连接",
             ])
         }
         struct Payload: Codable {
@@ -442,12 +490,13 @@ final class NodeAppModel {
         let data = try JSONEncoder().encode(payload)
         guard let json = String(bytes: data, encoding: .utf8) else {
             throw NSError(domain: "NodeAppModel", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "Failed to encode voice transcript payload as UTF-8",
+                NSLocalizedDescriptionKey: "无法将语音转录 payload 编码为 UTF-8",
             ])
         }
         await self.gateway.sendEvent(event: "voice.transcript", payloadJSON: json)
     }
 
+    /// 处理深度链接
     func handleDeepLink(url: URL) async {
         guard let route = DeepLinkParser.parse(url) else { return }
 
@@ -457,17 +506,18 @@ final class NodeAppModel {
         }
     }
 
+    /// 处理代理深度链接
     private func handleAgentDeepLink(_ link: AgentDeepLink, originalURL: URL) async {
         let message = link.message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !message.isEmpty else { return }
 
         if message.count > 20000 {
-            self.screen.errorText = "Deep link too large (message exceeds 20,000 characters)."
+            self.screen.errorText = "深度链接过大（消息超过 20,000 个字符）。"
             return
         }
 
         guard await self.isGatewayConnected() else {
-            self.screen.errorText = "Gateway not connected (cannot forward deep link)."
+            self.screen.errorText = "网关未连接（无法转发深度链接）。"
             return
         }
 
@@ -475,32 +525,35 @@ final class NodeAppModel {
             try await self.sendAgentRequest(link: link)
             self.screen.errorText = nil
         } catch {
-            self.screen.errorText = "Agent request failed: \(error.localizedDescription)"
+            self.screen.errorText = "代理请求失败: \(error.localizedDescription)"
         }
     }
 
+    /// 发送代理请求
     private func sendAgentRequest(link: AgentDeepLink) async throws {
         if link.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             throw NSError(domain: "DeepLink", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "invalid agent message",
+                NSLocalizedDescriptionKey: "无效的代理消息",
             ])
         }
 
-        // iOS gateway forwards to the gateway; no local auth prompts here.
-        // (Key-based unattended auth is handled on macOS for moltbot:// links.)
+        // iOS 网关转发到网关；此处无本地身份验证提示。
+        // （基于密钥的无人值守身份验证在 macOS 上处理 moltbot:// 链接。）
         let data = try JSONEncoder().encode(link)
         guard let json = String(bytes: data, encoding: .utf8) else {
             throw NSError(domain: "NodeAppModel", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "Failed to encode agent request payload as UTF-8",
+                NSLocalizedDescriptionKey: "无法将代理请求 payload 编码为 UTF-8",
             ])
         }
         await self.gateway.sendEvent(event: "agent.request", payloadJSON: json)
     }
 
+    /// 检查网关是否已连接
     private func isGatewayConnected() async -> Bool {
         self.gatewayConnected
     }
 
+    /// 处理调用请求
     private func handleInvoke(_ req: BridgeInvokeRequest) async -> BridgeInvokeResponse {
         let command = req.command
 
@@ -510,7 +563,7 @@ final class NodeAppModel {
                 ok: false,
                 error: MoltbotNodeError(
                     code: .backgroundUnavailable,
-                    message: "NODE_BACKGROUND_UNAVAILABLE: canvas/camera/screen commands require foreground"))
+                    message: "NODE_BACKGROUND_UNAVAILABLE: canvas/camera/screen 命令需要前台运行"))
         }
 
         if command.hasPrefix("camera."), !self.isCameraEnabled() {
@@ -519,7 +572,7 @@ final class NodeAppModel {
                 ok: false,
                 error: MoltbotNodeError(
                     code: .unavailable,
-                    message: "CAMERA_DISABLED: enable Camera in iOS Settings → Camera → Allow Camera"))
+                    message: "CAMERA_DISABLED: 在 iOS 设置 → 相机 → 允许相机中启用相机"))
         }
 
         do {
@@ -546,7 +599,7 @@ final class NodeAppModel {
                 return BridgeInvokeResponse(
                     id: req.id,
                     ok: false,
-                    error: MoltbotNodeError(code: .invalidRequest, message: "INVALID_REQUEST: unknown command"))
+                    error: MoltbotNodeError(code: .invalidRequest, message: "INVALID_REQUEST: 未知命令"))
             }
         } catch {
             if command.hasPrefix("camera.") {
@@ -560,10 +613,12 @@ final class NodeAppModel {
         }
     }
 
+    /// 检查命令是否在后台受限
     private func isBackgroundRestricted(_ command: String) -> Bool {
         command.hasPrefix("canvas.") || command.hasPrefix("camera.") || command.hasPrefix("screen.")
     }
 
+    /// 处理位置调用请求
     private func handleLocationInvoke(_ req: BridgeInvokeRequest) async throws -> BridgeInvokeResponse {
         let mode = self.locationMode()
         guard mode != .off else {
@@ -572,7 +627,7 @@ final class NodeAppModel {
                 ok: false,
                 error: MoltbotNodeError(
                     code: .unavailable,
-                    message: "LOCATION_DISABLED: enable Location in Settings"))
+                    message: "LOCATION_DISABLED: 在设置中启用位置"))
         }
         if self.isBackgrounded, mode != .always {
             return BridgeInvokeResponse(
@@ -580,7 +635,7 @@ final class NodeAppModel {
                 ok: false,
                 error: MoltbotNodeError(
                     code: .backgroundUnavailable,
-                    message: "LOCATION_BACKGROUND_UNAVAILABLE: background location requires Always"))
+                    message: "LOCATION_BACKGROUND_UNAVAILABLE: 后台位置需要始终允许"))
         }
         let params = (try? Self.decodeParams(MoltbotLocationGetParams.self, from: req.paramsJSON)) ??
             MoltbotLocationGetParams()
@@ -593,7 +648,7 @@ final class NodeAppModel {
                 ok: false,
                 error: MoltbotNodeError(
                     code: .unavailable,
-                    message: "LOCATION_PERMISSION_REQUIRED: grant Location permission"))
+                    message: "LOCATION_PERMISSION_REQUIRED: 授予位置权限"))
         }
         if self.isBackgrounded, status != .authorizedAlways {
             return BridgeInvokeResponse(
@@ -601,7 +656,7 @@ final class NodeAppModel {
                 ok: false,
                 error: MoltbotNodeError(
                     code: .unavailable,
-                    message: "LOCATION_PERMISSION_REQUIRED: enable Always for background access"))
+                    message: "LOCATION_PERMISSION_REQUIRED: 为后台访问启用始终允许"))
         }
         let location = try await self.locationService.currentLocation(
             params: params,
@@ -623,6 +678,7 @@ final class NodeAppModel {
         return BridgeInvokeResponse(id: req.id, ok: true, payloadJSON: json)
     }
 
+    /// 处理画布调用请求
     private func handleCanvasInvoke(_ req: BridgeInvokeRequest) async throws -> BridgeInvokeResponse {
         switch req.command {
         case MoltbotCanvasCommand.present.rawValue:
@@ -651,8 +707,8 @@ final class NodeAppModel {
             let format = params?.format ?? .jpeg
             let maxWidth: CGFloat? = {
                 if let raw = params?.maxWidth, raw > 0 { return CGFloat(raw) }
-                // Keep default snapshots comfortably below the gateway client's maxPayload.
-                // For full-res, clients should explicitly request a larger maxWidth.
+                // 保持默认快照大小舒适地低于网关客户端的最大有效负载。
+                // 对于全分辨率，客户端应明确请求更大的 maxWidth。
                 return switch format {
                 case .png: 900
                 case .jpeg: 1600
@@ -671,10 +727,11 @@ final class NodeAppModel {
             return BridgeInvokeResponse(
                 id: req.id,
                 ok: false,
-                error: MoltbotNodeError(code: .invalidRequest, message: "INVALID_REQUEST: unknown command"))
+                error: MoltbotNodeError(code: .invalidRequest, message: "INVALID_REQUEST: 未知命令"))
         }
     }
 
+    /// 处理画布A2UI调用请求
     private func handleCanvasA2UIInvoke(_ req: BridgeInvokeRequest) async throws -> BridgeInvokeResponse {
         let command = req.command
         switch command {
@@ -685,7 +742,7 @@ final class NodeAppModel {
                     ok: false,
                     error: MoltbotNodeError(
                         code: .unavailable,
-                        message: "A2UI_HOST_NOT_CONFIGURED: gateway did not advertise canvas host"))
+                        message: "A2UI_HOST_NOT_CONFIGURED: 网关未广告画布主机"))
             }
             self.screen.navigate(to: a2uiUrl)
             if await !self.screen.waitForA2UIReady(timeoutMs: 5000) {
@@ -694,7 +751,7 @@ final class NodeAppModel {
                     ok: false,
                     error: MoltbotNodeError(
                         code: .unavailable,
-                        message: "A2UI_HOST_UNAVAILABLE: A2UI host not reachable"))
+                        message: "A2UI_HOST_UNAVAILABLE: A2UI 主机无法访问"))
             }
 
             let json = try await self.screen.eval(javaScript: """
@@ -714,7 +771,7 @@ final class NodeAppModel {
                     let params = try Self.decodeParams(MoltbotCanvasA2UIPushParams.self, from: req.paramsJSON)
                     messages = params.messages
                 } catch {
-                    // Be forgiving: some clients still send JSONL payloads to `canvas.a2ui.push`.
+                    // 宽容处理：一些客户端仍然向 `canvas.a2ui.push` 发送 JSONL 负载。
                     let params = try Self.decodeParams(MoltbotCanvasA2UIPushJSONLParams.self, from: req.paramsJSON)
                     messages = try MoltbotCanvasA2UIJSONL.decodeMessagesFromJSONL(params.jsonl)
                 }
@@ -726,7 +783,7 @@ final class NodeAppModel {
                     ok: false,
                     error: MoltbotNodeError(
                         code: .unavailable,
-                        message: "A2UI_HOST_NOT_CONFIGURED: gateway did not advertise canvas host"))
+                        message: "A2UI_HOST_NOT_CONFIGURED: 网关未广告画布主机"))
             }
             self.screen.navigate(to: a2uiUrl)
             if await !self.screen.waitForA2UIReady(timeoutMs: 5000) {
@@ -735,7 +792,7 @@ final class NodeAppModel {
                     ok: false,
                     error: MoltbotNodeError(
                         code: .unavailable,
-                        message: "A2UI_HOST_UNAVAILABLE: A2UI host not reachable"))
+                        message: "A2UI_HOST_UNAVAILABLE: A2UI 主机无法访问"))
             }
 
             let messagesJSON = try MoltbotCanvasA2UIJSONL.encodeMessagesJSONArray(messages)
@@ -756,10 +813,11 @@ final class NodeAppModel {
             return BridgeInvokeResponse(
                 id: req.id,
                 ok: false,
-                error: MoltbotNodeError(code: .invalidRequest, message: "INVALID_REQUEST: unknown command"))
+                error: MoltbotNodeError(code: .invalidRequest, message: "INVALID_REQUEST: 未知命令"))
         }
     }
 
+    /// 处理相机调用请求
     private func handleCameraInvoke(_ req: BridgeInvokeRequest) async throws -> BridgeInvokeResponse {
         switch req.command {
         case MoltbotCameraCommand.list.rawValue:
@@ -770,7 +828,7 @@ final class NodeAppModel {
             let payload = try Self.encodePayload(Payload(devices: devices))
             return BridgeInvokeResponse(id: req.id, ok: true, payloadJSON: payload)
         case MoltbotCameraCommand.snap.rawValue:
-            self.showCameraHUD(text: "Taking photo…", kind: .photo)
+            self.showCameraHUD(text: "拍照中...", kind: .photo)
             self.triggerCameraFlash()
             let params = (try? Self.decodeParams(MoltbotCameraSnapParams.self, from: req.paramsJSON)) ??
                 MoltbotCameraSnapParams()
@@ -787,7 +845,7 @@ final class NodeAppModel {
                 base64: res.base64,
                 width: res.width,
                 height: res.height))
-            self.showCameraHUD(text: "Photo captured", kind: .success, autoHideSeconds: 1.6)
+            self.showCameraHUD(text: "照片已捕获", kind: .success, autoHideSeconds: 1.6)
             return BridgeInvokeResponse(id: req.id, ok: true, payloadJSON: payload)
         case MoltbotCameraCommand.clip.rawValue:
             let params = (try? Self.decodeParams(MoltbotCameraClipParams.self, from: req.paramsJSON)) ??
@@ -796,7 +854,7 @@ final class NodeAppModel {
             let suspended = (params.includeAudio ?? true) ? self.voiceWake.suspendForExternalAudioCapture() : false
             defer { self.voiceWake.resumeAfterExternalAudioCapture(wasSuspended: suspended) }
 
-            self.showCameraHUD(text: "Recording…", kind: .recording)
+            self.showCameraHUD(text: "录制中...", kind: .recording)
             let res = try await self.camera.clip(params: params)
 
             struct Payload: Codable {
@@ -810,25 +868,26 @@ final class NodeAppModel {
                 base64: res.base64,
                 durationMs: res.durationMs,
                 hasAudio: res.hasAudio))
-            self.showCameraHUD(text: "Clip captured", kind: .success, autoHideSeconds: 1.8)
+            self.showCameraHUD(text: "视频已捕获", kind: .success, autoHideSeconds: 1.8)
             return BridgeInvokeResponse(id: req.id, ok: true, payloadJSON: payload)
         default:
             return BridgeInvokeResponse(
                 id: req.id,
                 ok: false,
-                error: MoltbotNodeError(code: .invalidRequest, message: "INVALID_REQUEST: unknown command"))
+                error: MoltbotNodeError(code: .invalidRequest, message: "INVALID_REQUEST: 未知命令"))
         }
     }
 
+    /// 处理屏幕录制调用请求
     private func handleScreenRecordInvoke(_ req: BridgeInvokeRequest) async throws -> BridgeInvokeResponse {
         let params = (try? Self.decodeParams(MoltbotScreenRecordParams.self, from: req.paramsJSON)) ??
             MoltbotScreenRecordParams()
         if let format = params.format, format.lowercased() != "mp4" {
             throw NSError(domain: "Screen", code: 30, userInfo: [
-                NSLocalizedDescriptionKey: "INVALID_REQUEST: screen format must be mp4",
+                NSLocalizedDescriptionKey: "INVALID_REQUEST: 屏幕格式必须是 mp4",
             ])
         }
-        // Status pill mirrors screen recording state so it stays visible without overlay stacking.
+        // 状态栏镜像屏幕录制状态，使其在没有覆盖堆叠的情况下保持可见。
         self.screenRecordActive = true
         defer { self.screenRecordActive = false }
         let path = try await self.screenRecorder.record(
@@ -859,46 +918,54 @@ final class NodeAppModel {
 
 }
 
+/// NodeAppModel 的私有扩展
 private extension NodeAppModel {
+    /// 获取位置模式
     func locationMode() -> MoltbotLocationMode {
         let raw = UserDefaults.standard.string(forKey: "location.enabledMode") ?? "off"
         return MoltbotLocationMode(rawValue: raw) ?? .off
     }
 
+    /// 检查位置精度是否启用
     func isLocationPreciseEnabled() -> Bool {
         if UserDefaults.standard.object(forKey: "location.preciseEnabled") == nil { return true }
         return UserDefaults.standard.bool(forKey: "location.preciseEnabled")
     }
 
+    /// 解码参数
     static func decodeParams<T: Decodable>(_ type: T.Type, from json: String?) throws -> T {
         guard let json, let data = json.data(using: .utf8) else {
             throw NSError(domain: "Gateway", code: 20, userInfo: [
-                NSLocalizedDescriptionKey: "INVALID_REQUEST: paramsJSON required",
+                NSLocalizedDescriptionKey: "INVALID_REQUEST: 需要 paramsJSON",
             ])
         }
         return try JSONDecoder().decode(type, from: data)
     }
 
+    /// 编码负载
     static func encodePayload(_ obj: some Encodable) throws -> String {
         let data = try JSONEncoder().encode(obj)
         guard let json = String(bytes: data, encoding: .utf8) else {
             throw NSError(domain: "NodeAppModel", code: 21, userInfo: [
-                NSLocalizedDescriptionKey: "Failed to encode payload as UTF-8",
+                NSLocalizedDescriptionKey: "无法将负载编码为 UTF-8",
             ])
         }
         return json
     }
 
+    /// 检查相机是否启用
     func isCameraEnabled() -> Bool {
-        // Default-on: if the key doesn't exist yet, treat it as enabled.
+        // 默认启用：如果键不存在，则视为启用。
         if UserDefaults.standard.object(forKey: "camera.enabled") == nil { return true }
         return UserDefaults.standard.bool(forKey: "camera.enabled")
     }
 
+    /// 触发相机闪光灯
     func triggerCameraFlash() {
         self.cameraFlashNonce &+= 1
     }
 
+    /// 显示相机HUD
     func showCameraHUD(text: String, kind: CameraHUDKind, autoHideSeconds: Double? = nil) {
         self.cameraHUDDismissTask?.cancel()
 
@@ -919,39 +986,49 @@ private extension NodeAppModel {
 }
 
 #if DEBUG
+/// NodeAppModel 的调试扩展
 extension NodeAppModel {
+    /// 测试处理调用请求
     func _test_handleInvoke(_ req: BridgeInvokeRequest) async -> BridgeInvokeResponse {
         await self.handleInvoke(req)
     }
 
+    /// 测试解码参数
     static func _test_decodeParams<T: Decodable>(_ type: T.Type, from json: String?) throws -> T {
         try self.decodeParams(type, from: json)
     }
 
+    /// 测试编码负载
     static func _test_encodePayload(_ obj: some Encodable) throws -> String {
         try self.encodePayload(obj)
     }
 
+    /// 测试检查相机是否启用
     func _test_isCameraEnabled() -> Bool {
         self.isCameraEnabled()
     }
 
+    /// 测试触发相机闪光灯
     func _test_triggerCameraFlash() {
         self.triggerCameraFlash()
     }
 
+    /// 测试显示相机HUD
     func _test_showCameraHUD(text: String, kind: CameraHUDKind, autoHideSeconds: Double? = nil) {
         self.showCameraHUD(text: text, kind: kind, autoHideSeconds: autoHideSeconds)
     }
 
+    /// 测试处理Canvas A2UI操作
     func _test_handleCanvasA2UIAction(body: [String: Any]) async {
         await self.handleCanvasA2UIAction(body: body)
     }
 
+    /// 测试解析A2UI主机URL
     func _test_resolveA2UIHostURL() async -> String? {
         await self.resolveA2UIHostURL()
     }
 
+    /// 测试在断开连接时显示本地画布
     func _test_showLocalCanvasOnDisconnect() {
         self.showLocalCanvasOnDisconnect()
     }

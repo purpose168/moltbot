@@ -10,17 +10,24 @@ import bot.molt.android.node.ScreenRecordManager
 import bot.molt.android.node.SmsManager
 import kotlinx.coroutines.flow.StateFlow
 
+/**
+ * 主视图模型
+ * 作为UI和运行时之间的桥梁,暴露所有需要的状态和操作
+ */
 class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val runtime: NodeRuntime = (app as NodeApp).runtime
 
+  // 核心组件
   val canvas: CanvasController = runtime.canvas
   val camera: CameraCaptureManager = runtime.camera
   val screenRecorder: ScreenRecordManager = runtime.screenRecorder
   val sms: SmsManager = runtime.sms
 
+  // 网关相关状态
   val gateways: StateFlow<List<GatewayEndpoint>> = runtime.gateways
   val discoveryStatusText: StateFlow<String> = runtime.discoveryStatusText
 
+  // 连接状态
   val isConnected: StateFlow<Boolean> = runtime.isConnected
   val statusText: StateFlow<String> = runtime.statusText
   val serverName: StateFlow<String?> = runtime.serverName
@@ -29,10 +36,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   val seamColorArgb: StateFlow<Long> = runtime.seamColorArgb
   val mainSessionKey: StateFlow<String> = runtime.mainSessionKey
 
+  // 相机HUD状态
   val cameraHud: StateFlow<CameraHudState?> = runtime.cameraHud
   val cameraFlashToken: StateFlow<Long> = runtime.cameraFlashToken
   val screenRecordActive: StateFlow<Boolean> = runtime.screenRecordActive
 
+  // 节点设置
   val instanceId: StateFlow<String> = runtime.instanceId
   val displayName: StateFlow<String> = runtime.displayName
   val cameraEnabled: StateFlow<Boolean> = runtime.cameraEnabled
@@ -47,12 +56,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   val talkStatusText: StateFlow<String> = runtime.talkStatusText
   val talkIsListening: StateFlow<Boolean> = runtime.talkIsListening
   val talkIsSpeaking: StateFlow<Boolean> = runtime.talkIsSpeaking
+
+  // 手动网关设置
   val manualEnabled: StateFlow<Boolean> = runtime.manualEnabled
   val manualHost: StateFlow<String> = runtime.manualHost
   val manualPort: StateFlow<Int> = runtime.manualPort
   val manualTls: StateFlow<Boolean> = runtime.manualTls
   val canvasDebugStatusEnabled: StateFlow<Boolean> = runtime.canvasDebugStatusEnabled
 
+  // 聊天相关状态
   val chatSessionKey: StateFlow<String> = runtime.chatSessionKey
   val chatSessionId: StateFlow<String?> = runtime.chatSessionId
   val chatMessages = runtime.chatMessages
@@ -64,6 +76,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   val chatSessions = runtime.chatSessions
   val pendingRunCount: StateFlow<Int> = runtime.pendingRunCount
 
+  // 设置方法
   fun setForeground(value: Boolean) {
     runtime.setForeground(value)
   }
@@ -124,6 +137,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     runtime.setTalkEnabled(enabled)
   }
 
+  // 连接方法
   fun refreshGatewayConnection() {
     runtime.refreshGatewayConnection()
   }
@@ -140,10 +154,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     runtime.disconnect()
   }
 
+  // Canvas方法
   fun handleCanvasA2UIActionFromWebView(payloadJson: String) {
     runtime.handleCanvasA2UIActionFromWebView(payloadJson)
   }
 
+  // 聊天方法
   fun loadChat(sessionKey: String) {
     runtime.loadChat(sessionKey)
   }

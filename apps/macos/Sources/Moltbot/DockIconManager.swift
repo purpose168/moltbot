@@ -1,7 +1,7 @@
 import AppKit
 
-/// Central manager for Dock icon visibility.
-/// Shows the Dock icon while any windows are visible, regardless of user preference.
+/// Dock图标可见性的中央管理器。
+/// 当任何窗口可见时显示Dock图标,无论用户偏好设置如何。
 final class DockIconManager: NSObject, @unchecked Sendable {
     static let shared = DockIconManager()
 

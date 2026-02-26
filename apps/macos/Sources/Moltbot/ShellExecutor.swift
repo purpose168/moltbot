@@ -1,16 +1,26 @@
 import MoltbotIPC
 import Foundation
 
+/// Shell 命令执行器
+/// 提供执行 Shell 命令并捕获输出的功能
 enum ShellExecutor {
+    /// Shell 执行结果
     struct ShellResult {
-        var stdout: String
-        var stderr: String
-        var exitCode: Int?
-        var timedOut: Bool
-        var success: Bool
-        var errorMessage: String?
+        var stdout: String           // 标准输出
+        var stderr: String           // 标准错误
+        var exitCode: Int?          // 退出码
+        var timedOut: Bool           // 是否超时
+        var success: Bool            // 是否成功
+        var errorMessage: String?     // 错误消息
     }
 
+    /// 详细运行 Shell 命令
+    /// - Parameters:
+    ///   - command: 命令及其参数
+    ///   - cwd: 工作目录
+    ///   - env: 环境变量
+    ///   - timeout: 超时时间（秒）
+    /// - Returns: Shell 执行结果
     static func runDetailed(
         command: [String],
         cwd: String?,
@@ -24,7 +34,7 @@ enum ShellExecutor {
                 exitCode: nil,
                 timedOut: false,
                 success: false,
-                errorMessage: "empty command")
+                errorMessage: "空命令")
         }
 
         let process = Process()
@@ -32,7 +42,6 @@ enum ShellExecutor {
         process.arguments = command
         if let cwd { process.currentDirectoryURL = URL(fileURLWithPath: cwd) }
         if let env { process.environment = env }
-
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
         process.standardOutput = stdoutPipe
@@ -64,7 +73,7 @@ enum ShellExecutor {
                 exitCode: status,
                 timedOut: false,
                 success: status == 0,
-                errorMessage: status == 0 ? nil : "exit \(status)")
+                errorMessage: status == 0 ? nil : "退出 \(status)")
         }
 
         if let timeout, timeout > 0 {
@@ -81,7 +90,7 @@ enum ShellExecutor {
                         exitCode: nil,
                         timedOut: true,
                         success: false,
-                        errorMessage: "timeout")
+                        errorMessage: "超时")
                 }
                 let first = await group.next()!
                 group.cancelAll()
@@ -93,6 +102,13 @@ enum ShellExecutor {
         return await waitTask.value
     }
 
+    /// 运行 Shell 命令并返回响应
+    /// - Parameters:
+    ///   - command: 命令及其参数
+    ///   - cwd: 工作目录
+    ///   - env: 环境变量
+    ///   - timeout: 超时时间（秒）
+    /// - Returns: IPC 响应
     static func run(command: [String], cwd: String?, env: [String: String]?, timeout: Double?) async -> Response {
         let result = await self.runDetailed(command: command, cwd: cwd, env: env, timeout: timeout)
         let combined = result.stdout.isEmpty ? result.stderr : result.stdout

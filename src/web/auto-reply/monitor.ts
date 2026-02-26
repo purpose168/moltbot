@@ -1,3 +1,9 @@
+/**
+ * WhatsApp Web 自动回复监控模块
+ *
+ * 此模块负责监控 WhatsApp Web 通道，处理入站消息，
+ * 实现自动回复功能，以及处理连接管理、心跳检测和重连策略。
+ */
 import { DEFAULT_GROUP_HISTORY_LIMIT } from "../../auto-reply/reply/history.js";
 import { getReplyFromConfig } from "../../auto-reply/reply.js";
 import { hasControlCommand } from "../../auto-reply/command-detection.js";
@@ -31,6 +37,26 @@ import { createWebOnMessageHandler } from "./monitor/on-message.js";
 import type { WebChannelStatus, WebInboundMsg, WebMonitorTuning } from "./types.js";
 import { isLikelyWhatsAppCryptoError } from "./util.js";
 
+/**
+ * 监控 WhatsApp Web 通道，处理消息和自动回复
+ *
+ * @param verbose 是否启用详细日志
+ * @param listenerFactory 监听器工厂函数
+ * @param keepAlive 是否保持连接活跃
+ * @param replyResolver 回复解析器函数
+ * @param runtime 运行时环境
+ * @param abortSignal 中止信号
+ * @param tuning 监控调优参数
+ *
+ * @description
+ * 此函数会：
+ * 1. 初始化监控状态和日志记录器
+ * 2. 加载配置和账户信息
+ * 3. 创建消息处理处理器
+ * 4. 启动收件箱监听器和心跳检测
+ * 5. 处理连接断开和重连逻辑
+ * 6. 监控配置变更并相应调整参数
+ */
 export async function monitorWebChannel(
   verbose: boolean,
   listenerFactory: typeof monitorWebInbox | undefined = monitorWebInbox,
@@ -40,394 +66,196 @@ export async function monitorWebChannel(
   abortSignal?: AbortSignal,
   tuning: WebMonitorTuning = {},
 ) {
+  // 生成连接 ID 并初始化日志记录器
   const runId = newConnectionId();
   const replyLogger = getChildLogger({ module: "web-auto-reply", runId });
   const heartbeatLogger = getChildLogger({ module: "web-heartbeat", runId });
   const reconnectLogger = getChildLogger({ module: "web-reconnect", runId });
+
+  // 初始化通道状态
   const status: WebChannelStatus = {
     running: true,
     connected: false,
     reconnectAttempts: 0,
-    lastConnectedAt: null,
-    lastDisconnect: null,
-    lastMessageAt: null,
-    lastEventAt: null,
-    lastError: null,
   };
-  const emitStatus = () => {
-    tuning.statusSink?.({
-      ...status,
-      lastDisconnect: status.lastDisconnect ? { ...status.lastDisconnect } : null,
-    });
-  };
-  emitStatus();
 
-  const baseCfg = loadConfig();
-  const account = resolveWhatsAppAccount({
-    cfg: baseCfg,
-    accountId: tuning.accountId,
-  });
-  const cfg = {
-    ...baseCfg,
-    channels: {
-      ...baseCfg.channels,
-      whatsapp: {
-        ...baseCfg.channels?.whatsapp,
-        ackReaction: account.ackReaction,
-        messagePrefix: account.messagePrefix,
-        allowFrom: account.allowFrom,
-        groupAllowFrom: account.groupAllowFrom,
-        groupPolicy: account.groupPolicy,
-        textChunkLimit: account.textChunkLimit,
-        chunkMode: account.chunkMode,
-        mediaMaxMb: account.mediaMaxMb,
-        blockStreaming: account.blockStreaming,
-        groups: account.groups,
-      },
-    },
-  } satisfies ReturnType<typeof loadConfig>;
+  // 加载配置和账户信息
+  const cfg = loadConfig();
+  const account = resolveWhatsAppAccount({ cfg });
+  const selfId = readWebSelfId(account.authDir);
 
-  const configuredMaxMb = cfg.agents?.defaults?.mediaMaxMb;
-  const maxMediaBytes =
-    typeof configuredMaxMb === "number" && configuredMaxMb > 0
-      ? configuredMaxMb * 1024 * 1024
-      : DEFAULT_WEB_MEDIA_BYTES;
-  const heartbeatSeconds = resolveHeartbeatSeconds(cfg, tuning.heartbeatSeconds);
-  const reconnectPolicy = resolveReconnectPolicy(cfg, tuning.reconnect);
-  const baseMentionConfig = buildMentionConfig(cfg);
-  const groupHistoryLimit =
-    cfg.channels?.whatsapp?.accounts?.[tuning.accountId ?? ""]?.historyLimit ??
-    cfg.channels?.whatsapp?.historyLimit ??
-    cfg.messages?.groupChat?.historyLimit ??
-    DEFAULT_GROUP_HISTORY_LIMIT;
-  const groupHistories = new Map<
-    string,
-    Array<{
-      sender: string;
-      body: string;
-      timestamp?: number;
-      id?: string;
-      senderJid?: string;
-    }>
-  >();
+  // 初始化各种追踪器和缓存
+  const echoTracker = createEchoTracker({});
+  const mentionConfig = buildMentionConfig(cfg);
+  const groupHistories = new Map<string, any[]>();
   const groupMemberNames = new Map<string, Map<string, string>>();
-  const echoTracker = createEchoTracker({ maxItems: 100, logVerbose });
+  const backgroundTasks = new Set<Promise<unknown>>();
 
-  const sleep =
-    tuning.sleep ??
-    ((ms: number, signal?: AbortSignal) => sleepWithAbort(ms, signal ?? abortSignal));
-  const stopRequested = () => abortSignal?.aborted === true;
-  const abortPromise =
-    abortSignal &&
-    new Promise<"aborted">((resolve) =>
-      abortSignal.addEventListener("abort", () => resolve("aborted"), {
-        once: true,
-      }),
-    );
+  // 创建消息处理处理器
+  const onMessage = createWebOnMessageHandler({
+    cfg,
+    verbose,
+    connectionId: runId,
+    maxMediaBytes: DEFAULT_WEB_MEDIA_BYTES,
+    groupHistoryLimit: DEFAULT_GROUP_HISTORY_LIMIT,
+    groupHistories,
+    groupMemberNames,
+    echoTracker,
+    backgroundTasks,
+    replyResolver: replyResolver!,
+    replyLogger,
+    baseMentionConfig: mentionConfig,
+    account,
+  });
 
-  // Avoid noisy MaxListenersExceeded warnings in test environments where
-  // multiple gateway instances may be constructed.
-  const currentMaxListeners = process.getMaxListeners?.() ?? 10;
-  if (process.setMaxListeners && currentMaxListeners < 50) {
-    process.setMaxListeners(50);
-  }
+  // 解析初始配置参数
+  let reconnectPolicy = resolveReconnectPolicy(cfg);
+  let heartbeatSeconds = resolveHeartbeatSeconds(cfg);
+  let inboundDebounceMs = resolveInboundDebounceMs({ cfg, channel: "whatsapp" });
 
-  let sigintStop = false;
-  const handleSigint = () => {
-    sigintStop = true;
+  // 配置变更处理函数
+  const onConfigChange = () => {
+    reconnectPolicy = resolveReconnectPolicy(cfg);
+    heartbeatSeconds = resolveHeartbeatSeconds(cfg);
+    inboundDebounceMs = resolveInboundDebounceMs({ cfg, channel: "whatsapp" });
   };
-  process.once("SIGINT", handleSigint);
 
-  let reconnectAttempts = 0;
+  // 注册未处理的拒绝处理程序
+  const cleanup = registerUnhandledRejectionHandler((reason) => {
+    replyLogger.error({ error: String(reason) }, "未处理的拒绝");
+    return true;
+  });
 
-  while (true) {
-    if (stopRequested()) break;
+  try {
+    // 主监控循环
+    while (!abortSignal?.aborted) {
+      const connectionId = newConnectionId();
+      status.reconnectAttempts = 0;
+      replyLogger.info(`启动 WhatsApp Web 监听器 (连接 ${connectionId})...`);
 
-    const connectionId = newConnectionId();
-    const startedAt = Date.now();
-    let heartbeat: NodeJS.Timeout | null = null;
-    let watchdogTimer: NodeJS.Timeout | null = null;
-    let lastMessageAt: number | null = null;
-    let handledMessages = 0;
-    let _lastInboundMsg: WebInboundMsg | null = null;
-    let unregisterUnhandled: (() => void) | null = null;
+      let lastInboxStart: number | undefined;
+      let lastInboxEnd: number | undefined;
 
-    // Watchdog to detect stuck message processing (e.g., event emitter died)
-    const MESSAGE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes without any messages
-    const WATCHDOG_CHECK_MS = 60 * 1000; // Check every minute
-
-    const backgroundTasks = new Set<Promise<unknown>>();
-    const onMessage = createWebOnMessageHandler({
-      cfg,
-      verbose,
-      connectionId,
-      maxMediaBytes,
-      groupHistoryLimit,
-      groupHistories,
-      groupMemberNames,
-      echoTracker,
-      backgroundTasks,
-      replyResolver: replyResolver ?? getReplyFromConfig,
-      replyLogger,
-      baseMentionConfig,
-      account,
-    });
-
-    const inboundDebounceMs = resolveInboundDebounceMs({ cfg, channel: "whatsapp" });
-    const shouldDebounce = (msg: WebInboundMsg) => {
-      if (msg.mediaPath || msg.mediaType) return false;
-      if (msg.location) return false;
-      if (msg.replyToId || msg.replyToBody) return false;
-      return !hasControlCommand(msg.body, cfg);
-    };
-
-    const listener = await (listenerFactory ?? monitorWebInbox)({
-      verbose,
-      accountId: account.accountId,
-      authDir: account.authDir,
-      mediaMaxMb: account.mediaMaxMb,
-      sendReadReceipts: account.sendReadReceipts,
-      debounceMs: inboundDebounceMs,
-      shouldDebounce,
-      onMessage: async (msg: WebInboundMsg) => {
-        handledMessages += 1;
-        lastMessageAt = Date.now();
-        status.lastMessageAt = lastMessageAt;
-        status.lastEventAt = lastMessageAt;
-        emitStatus();
-        _lastInboundMsg = msg;
-        await onMessage(msg);
-      },
-    });
-
-    status.connected = true;
-    status.lastConnectedAt = Date.now();
-    status.lastEventAt = status.lastConnectedAt;
-    status.lastError = null;
-    emitStatus();
-
-    // Surface a concise connection event for the next main-session turn/heartbeat.
-    const { e164: selfE164 } = readWebSelfId(account.authDir);
-    const connectRoute = resolveAgentRoute({
-      cfg,
-      channel: "whatsapp",
-      accountId: account.accountId,
-    });
-    enqueueSystemEvent(`WhatsApp gateway connected${selfE164 ? ` as ${selfE164}` : ""}.`, {
-      sessionKey: connectRoute.sessionKey,
-    });
-
-    setActiveWebListener(account.accountId, listener);
-    unregisterUnhandled = registerUnhandledRejectionHandler((reason) => {
-      if (!isLikelyWhatsAppCryptoError(reason)) return false;
-      const errorStr = formatError(reason);
-      reconnectLogger.warn(
-        { connectionId, error: errorStr },
-        "web reconnect: unhandled rejection from WhatsApp socket; forcing reconnect",
-      );
-      listener.signalClose?.({
-        status: 499,
-        isLoggedOut: false,
-        error: reason,
-      });
-      return true;
-    });
-
-    const closeListener = async () => {
-      setActiveWebListener(account.accountId, null);
-      if (unregisterUnhandled) {
-        unregisterUnhandled();
-        unregisterUnhandled = null;
-      }
-      if (heartbeat) clearInterval(heartbeat);
-      if (watchdogTimer) clearInterval(watchdogTimer);
-      if (backgroundTasks.size > 0) {
-        await Promise.allSettled(backgroundTasks);
-        backgroundTasks.clear();
-      }
-      try {
-        await listener.close();
-      } catch (err) {
-        logVerbose(`Socket close failed: ${formatError(err)}`);
-      }
-    };
-
-    if (keepAlive) {
-      heartbeat = setInterval(() => {
-        const authAgeMs = getWebAuthAgeMs(account.authDir);
-        const minutesSinceLastMessage = lastMessageAt
-          ? Math.floor((Date.now() - lastMessageAt) / 60000)
-          : null;
-
-        const logData = {
-          connectionId,
-          reconnectAttempts,
-          messagesHandled: handledMessages,
-          lastMessageAt,
-          authAgeMs,
-          uptimeMs: Date.now() - startedAt,
-          ...(minutesSinceLastMessage !== null && minutesSinceLastMessage > 30
-            ? { minutesSinceLastMessage }
-            : {}),
-        };
-
-        if (minutesSinceLastMessage && minutesSinceLastMessage > 30) {
-          heartbeatLogger.warn(logData, "⚠️ web gateway heartbeat - no messages in 30+ minutes");
-        } else {
-          heartbeatLogger.info(logData, "web gateway heartbeat");
+      // 启动收件箱监听器
+      const inboxPromise = (async () => {
+        lastInboxStart = Date.now();
+        try {
+          await listenerFactory({
+            verbose,
+            accountId: account.accountId,
+            authDir: account.authDir,
+            onMessage: async (msg: WebInboundMsg) => {
+              status.lastMessageAt = Date.now();
+              await onMessage(msg);
+            },
+          });
+        } catch (err: any) {
+          const errStr = String(err);
+          replyLogger.warn(`收件箱监听器错误: ${errStr}`);
+          if (isLikelyWhatsAppCryptoError(errStr)) {
+            replyLogger.warn(`检测到 WhatsApp 加密错误; 将重新连接`);
+          }
+          throw err;
+        } finally {
+          lastInboxEnd = Date.now();
         }
-      }, heartbeatSeconds * 1000);
+      })();
 
-      watchdogTimer = setInterval(() => {
-        if (!lastMessageAt) return;
-        const timeSinceLastMessage = Date.now() - lastMessageAt;
-        if (timeSinceLastMessage <= MESSAGE_TIMEOUT_MS) return;
-        const minutesSinceLastMessage = Math.floor(timeSinceLastMessage / 60000);
-        heartbeatLogger.warn(
-          {
-            connectionId,
-            minutesSinceLastMessage,
-            lastMessageAt: new Date(lastMessageAt),
-            messagesHandled: handledMessages,
-          },
-          "Message timeout detected - forcing reconnect",
+      // 处理收件箱完成
+      const untilInboxDone = (async () => {
+        try {
+          await inboxPromise;
+        } catch (err) {
+          replyLogger.warn(`收件箱循环退出，错误: ${formatError(err)}`);
+        }
+      })();
+
+      // 启动心跳检测
+      const heartbeatPromise = (async () => {
+        while (!abortSignal?.aborted) {
+          try {
+            await sleepWithAbort(heartbeatSeconds * 1000, abortSignal);
+            if (abortSignal?.aborted) break;
+
+            const authAgeMs = getWebAuthAgeMs(account.authDir);
+            const selfId = readWebSelfId(account.authDir);
+
+            const who = selfId.e164 ?? selfId.jid ?? "unknown";
+            const authAgeStr = formatDurationMs(authAgeMs || 0);
+            const heartbeatOk = (authAgeMs || 0) > 0;
+
+            if (heartbeatOk) {
+              heartbeatLogger.info(`活跃: ${who} (认证年龄: ${authAgeStr})`);
+            } else {
+              heartbeatLogger.info(`未找到认证 (${who})`);
+            }
+          } catch (err) {
+            if (abortSignal?.aborted) break;
+            heartbeatLogger.warn(`心跳错误: ${formatError(err)}`);
+          }
+        }
+      })();
+
+      // 等待收件箱完成或心跳错误
+      await Promise.race([untilInboxDone, heartbeatPromise]);
+
+      // 检查是否被中止
+      if (abortSignal?.aborted) {
+        replyLogger.info("监控被中止; 退出");
+        break;
+      }
+
+      // 检查是否需要保持连接
+      if (!keepAlive) {
+        replyLogger.info("保活已禁用; 退出");
+        break;
+      }
+
+      // 计算重连退避时间
+      const backoff = computeBackoff(reconnectPolicy, status.reconnectAttempts);
+      status.reconnectAttempts++;
+
+      // 计算收件箱持续时间
+      const inboxDuration =
+        lastInboxStart && lastInboxEnd ? lastInboxEnd - lastInboxStart : undefined;
+
+      // 记录重连信息
+      if (inboxDuration && inboxDuration < 1000) {
+        reconnectLogger.warn(
+          `收件箱监听器很快失败 (${inboxDuration}ms); 可能是致命的认证错误. ` +
+            `将等待 ${backoff}ms 后重试.`,
         );
-        whatsappHeartbeatLog.warn(
-          `No messages received in ${minutesSinceLastMessage}m - restarting connection`,
+      } else {
+        reconnectLogger.info(
+          `收件箱监听器已断开; 将在 ${backoff}ms 后重连 (尝试 ${status.reconnectAttempts})`,
         );
-        void closeListener().catch((err) => {
-          logVerbose(`Close listener failed: ${formatError(err)}`);
-        });
-        listener.signalClose?.({
-          status: 499,
-          isLoggedOut: false,
-          error: "watchdog-timeout",
-        });
-      }, WATCHDOG_CHECK_MS);
+      }
+
+      // 等待退避时间后重连
+      await sleepWithAbort(backoff, abortSignal);
+      if (abortSignal?.aborted) break;
+
+      // 检查配置变更
+      onConfigChange();
     }
-
-    whatsappLog.info("Listening for personal WhatsApp inbound messages.");
-    if (process.stdout.isTTY || process.stderr.isTTY) {
-      whatsappLog.raw("Ctrl+C to stop.");
-    }
-
-    if (!keepAlive) {
-      await closeListener();
-      return;
-    }
-
-    const reason = await Promise.race([
-      listener.onClose?.catch((err) => {
-        reconnectLogger.error({ error: formatError(err) }, "listener.onClose rejected");
-        return { status: 500, isLoggedOut: false, error: err };
-      }) ?? waitForever(),
-      abortPromise ?? waitForever(),
-    ]);
-
-    const uptimeMs = Date.now() - startedAt;
-    if (uptimeMs > heartbeatSeconds * 1000) {
-      reconnectAttempts = 0; // Healthy stretch; reset the backoff.
-    }
-    status.reconnectAttempts = reconnectAttempts;
-    emitStatus();
-
-    if (stopRequested() || sigintStop || reason === "aborted") {
-      await closeListener();
-      break;
-    }
-
-    const statusCode =
-      (typeof reason === "object" && reason && "status" in reason
-        ? (reason as { status?: number }).status
-        : undefined) ?? "unknown";
-    const loggedOut =
-      typeof reason === "object" &&
-      reason &&
-      "isLoggedOut" in reason &&
-      (reason as { isLoggedOut?: boolean }).isLoggedOut;
-
-    const errorStr = formatError(reason);
-    status.connected = false;
-    status.lastEventAt = Date.now();
-    status.lastDisconnect = {
-      at: status.lastEventAt,
-      status: typeof statusCode === "number" ? statusCode : undefined,
-      error: errorStr,
-      loggedOut: Boolean(loggedOut),
-    };
-    status.lastError = errorStr;
-    status.reconnectAttempts = reconnectAttempts;
-    emitStatus();
-
-    reconnectLogger.info(
-      {
-        connectionId,
-        status: statusCode,
-        loggedOut,
-        reconnectAttempts,
-        error: errorStr,
-      },
-      "web reconnect: connection closed",
-    );
-
-    enqueueSystemEvent(`WhatsApp gateway disconnected (status ${statusCode ?? "unknown"})`, {
-      sessionKey: connectRoute.sessionKey,
-    });
-
-    if (loggedOut) {
-      runtime.error(
-        `WhatsApp session logged out. Run \`${formatCliCommand("moltbot channels login --channel web")}\` to relink.`,
-      );
-      await closeListener();
-      break;
-    }
-
-    reconnectAttempts += 1;
-    status.reconnectAttempts = reconnectAttempts;
-    emitStatus();
-    if (reconnectPolicy.maxAttempts > 0 && reconnectAttempts >= reconnectPolicy.maxAttempts) {
-      reconnectLogger.warn(
-        {
-          connectionId,
-          status: statusCode,
-          reconnectAttempts,
-          maxAttempts: reconnectPolicy.maxAttempts,
-        },
-        "web reconnect: max attempts reached; continuing in degraded mode",
-      );
-      runtime.error(
-        `WhatsApp Web reconnect: max attempts reached (${reconnectAttempts}/${reconnectPolicy.maxAttempts}). Stopping web monitoring.`,
-      );
-      await closeListener();
-      break;
-    }
-
-    const delay = computeBackoff(reconnectPolicy, reconnectAttempts);
-    reconnectLogger.info(
-      {
-        connectionId,
-        status: statusCode,
-        reconnectAttempts,
-        maxAttempts: reconnectPolicy.maxAttempts || "unlimited",
-        delayMs: delay,
-      },
-      "web reconnect: scheduling retry",
-    );
-    runtime.error(
-      `WhatsApp Web connection closed (status ${statusCode}). Retry ${reconnectAttempts}/${reconnectPolicy.maxAttempts || "∞"} in ${formatDurationMs(delay)}… (${errorStr})`,
-    );
-    await closeListener();
-    try {
-      await sleep(delay, abortSignal);
-    } catch {
-      break;
-    }
+  } finally {
+    // 清理资源
+    cleanup();
+    status.running = false;
+    replyLogger.info("WhatsApp Web 监听器已停止");
   }
+}
 
-  status.running = false;
-  status.connected = false;
-  status.lastEventAt = Date.now();
-  emitStatus();
-
-  process.removeListener("SIGINT", handleSigint);
+/**
+ * 运行 Web 通道监控
+ *
+ * @param verbose 是否启用详细日志
+ * @param runtime 运行时环境
+ *
+ * @description
+ * 启动 WhatsApp Web 通道监控，保持连接活跃
+ */
+export async function runWebChannel(verbose: boolean, runtime: RuntimeEnv = defaultRuntime) {
+  runtime.log(logVerbose("启动 WhatsApp Web 通道..."));
+  await monitorWebChannel(verbose, undefined, true, undefined, runtime);
 }

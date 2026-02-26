@@ -162,7 +162,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
 
   val audioPermissionLauncher =
     rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
-      // Status text is handled by NodeRuntime.
+      // 状态文本由 NodeRuntime 处理
     }
 
   val smsPermissionAvailable =
@@ -250,9 +250,9 @@ fun SettingsSheet(viewModel: MainViewModel) {
     if (visibleGateways.isEmpty()) {
       discoveryStatusText
     } else if (isConnected) {
-      "Discovery active • ${visibleGateways.size} other gateway${if (visibleGateways.size == 1) "" else "s"} found"
+      "发现活跃 • 发现 ${visibleGateways.size} 个其他网关${if (visibleGateways.size == 1) "" else "s"}" // Discovery active • ... other gateway(s) found
     } else {
-      "Discovery active • ${visibleGateways.size} gateway${if (visibleGateways.size == 1) "" else "s"} found"
+      "发现活跃 • 发现 ${visibleGateways.size} 个网关${if (visibleGateways.size == 1) "" else "s"}" // Discovery active • ... gateway(s) found
     }
 
   LazyColumn(
@@ -266,30 +266,30 @@ fun SettingsSheet(viewModel: MainViewModel) {
     contentPadding = PaddingValues(16.dp),
     verticalArrangement = Arrangement.spacedBy(6.dp),
   ) {
-    // Order parity: Node → Gateway → Voice → Camera → Messaging → Location → Screen.
-    item { Text("Node", style = MaterialTheme.typography.titleSmall) }
+    // 顺序一致性: Node → Gateway → Voice → Camera → Messaging → Location → Screen
+    item { Text("节点", style = MaterialTheme.typography.titleSmall) } // Node
     item {
       OutlinedTextField(
         value = displayName,
         onValueChange = viewModel::setDisplayName,
-        label = { Text("Name") },
+        label = { Text("名称") }, // Name
         modifier = Modifier.fillMaxWidth(),
       )
     }
-    item { Text("Instance ID: $instanceId", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-    item { Text("Device: $deviceModel", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-    item { Text("Version: $appVersion", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    item { Text("实例 ID: $instanceId", color = MaterialTheme.colorScheme.onSurfaceVariant) } // Instance ID
+    item { Text("设备: $deviceModel", color = MaterialTheme.colorScheme.onSurfaceVariant) } // Device
+    item { Text("版本: $appVersion", color = MaterialTheme.colorScheme.onSurfaceVariant) } // Version
 
     item { HorizontalDivider() }
 
     // Gateway
-    item { Text("Gateway", style = MaterialTheme.typography.titleSmall) }
-    item { ListItem(headlineContent = { Text("Status") }, supportingContent = { Text(statusText) }) }
+    item { Text("网关", style = MaterialTheme.typography.titleSmall) } // Gateway
+    item { ListItem(headlineContent = { Text("状态") }, supportingContent = { Text(statusText) }) } // Status
     if (serverName != null) {
-      item { ListItem(headlineContent = { Text("Server") }, supportingContent = { Text(serverName!!) }) }
+      item { ListItem(headlineContent = { Text("服务器") }, supportingContent = { Text(serverName!!) }) } // Server
     }
     if (remoteAddress != null) {
-      item { ListItem(headlineContent = { Text("Address") }, supportingContent = { Text(remoteAddress!!) }) }
+      item { ListItem(headlineContent = { Text("地址") }, supportingContent = { Text(remoteAddress!!) }) } // Address
     }
     item {
       // UI sanity: "Disconnect" only when we have an active remote.
@@ -321,12 +321,12 @@ fun SettingsSheet(viewModel: MainViewModel) {
           val detailLines =
             buildList {
               add("IP: ${gateway.host}:${gateway.port}")
-              gateway.lanHost?.let { add("LAN: $it") }
+              gateway.lanHost?.let { add("局域网: $it") } // LAN
               gateway.tailnetDns?.let { add("Tailnet: $it") }
               if (gateway.gatewayPort != null || gateway.canvasPort != null) {
                 val gw = (gateway.gatewayPort ?: gateway.port).toString()
                 val canvas = gateway.canvasPort?.toString() ?: "—"
-                add("Ports: gw $gw · canvas $canvas")
+                add("端口: 网关 $gw · 画布 $canvas") // Ports: gw ... · canvas ...
               }
             }
           ListItem(
@@ -428,11 +428,11 @@ fun SettingsSheet(viewModel: MainViewModel) {
     item { HorizontalDivider() }
 
     // Voice
-    item { Text("Voice", style = MaterialTheme.typography.titleSmall) }
+    item { Text("语音", style = MaterialTheme.typography.titleSmall) } // Voice
     item {
       val enabled = voiceWakeMode != VoiceWakeMode.Off
       ListItem(
-        headlineContent = { Text("Voice Wake") },
+        headlineContent = { Text("语音唤醒") }, // Voice Wake
         supportingContent = { Text(voiceWakeStatusText) },
         trailingContent = {
           Switch(
@@ -515,13 +515,13 @@ fun SettingsSheet(viewModel: MainViewModel) {
           ),
       )
     }
-    item { Button(onClick = viewModel::resetWakeWordsDefaults) { Text("Reset defaults") } }
+    item { Button(onClick = viewModel::resetWakeWordsDefaults) { Text("重置为默认值") } } // Reset defaults
     item {
       Text(
         if (isConnected) {
-          "Any node can edit wake words. Changes sync via the gateway."
+          "任何节点都可以编辑唤醒词。更改通过网关同步。" // Any node can edit wake words. Changes sync via the gateway.
         } else {
-          "Connect to a gateway to sync wake words globally."
+          "连接到网关以全局同步唤醒词。" // Connect to a gateway to sync wake words globally.
         },
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -588,12 +588,12 @@ fun SettingsSheet(viewModel: MainViewModel) {
     item { HorizontalDivider() }
 
     // Location
-    item { Text("Location", style = MaterialTheme.typography.titleSmall) }
+    item { Text("位置", style = MaterialTheme.typography.titleSmall) } // Location
     item {
       Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
         ListItem(
-          headlineContent = { Text("Off") },
-          supportingContent = { Text("Disable location sharing.") },
+          headlineContent = { Text("关闭") }, // Off
+          supportingContent = { Text("禁用位置共享。") }, // Disable location sharing.
           trailingContent = {
             RadioButton(
               selected = locationMode == LocationMode.Off,
@@ -646,11 +646,11 @@ fun SettingsSheet(viewModel: MainViewModel) {
     item { HorizontalDivider() }
 
     // Screen
-    item { Text("Screen", style = MaterialTheme.typography.titleSmall) }
+    item { Text("屏幕", style = MaterialTheme.typography.titleSmall) } // Screen
     item {
       ListItem(
-        headlineContent = { Text("Prevent Sleep") },
-        supportingContent = { Text("Keeps the screen awake while Moltbot is open.") },
+        headlineContent = { Text("防止休眠") }, // Prevent Sleep
+        supportingContent = { Text("在 Moltbot 打开时保持屏幕唤醒。") }, // Keeps the screen awake while Moltbot is open.
         trailingContent = { Switch(checked = preventSleep, onCheckedChange = viewModel::setPreventSleep) },
       )
     }
@@ -658,11 +658,11 @@ fun SettingsSheet(viewModel: MainViewModel) {
     item { HorizontalDivider() }
 
     // Debug
-    item { Text("Debug", style = MaterialTheme.typography.titleSmall) }
+    item { Text("调试", style = MaterialTheme.typography.titleSmall) } // Debug
     item {
       ListItem(
-        headlineContent = { Text("Debug Canvas Status") },
-        supportingContent = { Text("Show status text in the canvas when debug is enabled.") },
+        headlineContent = { Text("调试画布状态") }, // Debug Canvas Status
+        supportingContent = { Text("在启用调试时在画布中显示状态文本。") }, // Show status text in the canvas when debug is enabled.
         trailingContent = {
           Switch(
             checked = canvasDebugStatusEnabled,

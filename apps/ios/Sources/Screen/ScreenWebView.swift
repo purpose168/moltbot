@@ -10,6 +10,6 @@ struct ScreenWebView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        // State changes are driven by ScreenController.
+        // 状态变更由 ScreenController 驱动。
     }
 }

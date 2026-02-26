@@ -8,11 +8,11 @@ enum GatewayEndpointState: Sendable, Equatable {
     case unavailable(mode: AppState.ConnectionMode, reason: String)
 }
 
-/// Single place to resolve (and publish) the effective gateway control endpoint.
+/// 解析(并发布)有效网关控制端点的单一位置。
 ///
-/// This is intentionally separate from `GatewayConnection`:
-/// - `GatewayConnection` consumes the resolved endpoint (no tunnel side-effects).
-/// - The endpoint store owns observation + explicit "ensure tunnel" actions.
+/// 这有意与 `GatewayConnection` 分离:
+/// - `GatewayConnection` 消费解析的端点(无隧道副作用)。
+/// - 端点存储拥有观察 + 显式"确保隧道"操作。
 actor GatewayEndpointStore {
     static let shared = GatewayEndpointStore()
     private static let supportedBindModes: Set<String> = [
@@ -22,7 +22,7 @@ actor GatewayEndpointStore {
         "auto",
         "custom",
     ]
-    private static let remoteConnectingDetail = "Connecting to remote gateway…"
+    private static let remoteConnectingDetail = "正在连接到远程网关…"
     private static let staticLogger = Logger(subsystem: "bot.molt", category: "gateway-endpoint")
     private enum EnvOverrideWarningKind: Sendable {
         case token
@@ -341,18 +341,18 @@ actor GatewayEndpointStore {
                 password: password))
         case .unconfigured:
             self.cancelRemoteEnsure()
-            self.setState(.unavailable(mode: .unconfigured, reason: "Gateway not configured"))
+            self.setState(.unavailable(mode: .unconfigured, reason: "网关未配置"))
         }
     }
 
-    /// Explicit action: ensure the remote control tunnel is established and publish the resolved endpoint.
+    /// 显式操作：确保远程控制隧道已建立并发布解析的端点。
     func ensureRemoteControlTunnel() async throws -> UInt16 {
         let mode = await self.deps.mode()
         guard mode == .remote else {
             throw NSError(
                 domain: "RemoteTunnel",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Remote mode is not enabled"])
+                userInfo: [NSLocalizedDescriptionKey: "远程模式未启用"])
         }
         let root = MoltbotConfigFile.loadDict()
         if GatewayRemoteConfig.resolveTransport(root: root) == .direct {
@@ -360,7 +360,7 @@ actor GatewayEndpointStore {
                 throw NSError(
                     domain: "GatewayEndpoint",
                     code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "gateway.remote.url missing or invalid"])
+                    userInfo: [NSLocalizedDescriptionKey: "gateway.remote.url 缺失或无效"])
             }
             guard let port = GatewayRemoteConfig.defaultPort(for: url),
                   let portInt = UInt16(exactly: port)
@@ -368,9 +368,9 @@ actor GatewayEndpointStore {
                 throw NSError(
                     domain: "GatewayEndpoint",
                     code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Invalid gateway.remote.url port"])
+                    userInfo: [NSLocalizedDescriptionKey: "无效的 gateway.remote.url 端口"])
             }
-            self.logger.info("remote transport direct; skipping SSH tunnel")
+            self.logger.info("远程传输直连；跳过 SSH 隧道")
             return portInt
         }
         let config = try await self.ensureRemoteConfig(detail: Self.remoteConnectingDetail)
@@ -378,7 +378,7 @@ actor GatewayEndpointStore {
             throw NSError(
                 domain: "GatewayEndpoint",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Missing tunnel port"])
+                userInfo: [NSLocalizedDescriptionKey: "缺少隧道端口"])
         }
         return port
     }
@@ -390,7 +390,7 @@ actor GatewayEndpointStore {
             return (url, token, password)
         case let .connecting(mode, _):
             guard mode == .remote else {
-                throw NSError(domain: "GatewayEndpoint", code: 1, userInfo: [NSLocalizedDescriptionKey: "Connecting…"])
+                throw NSError(domain: "GatewayEndpoint", code: 1, userInfo: [NSLocalizedDescriptionKey: "正在连接…"])
             }
             return try await self.ensureRemoteConfig(detail: Self.remoteConnectingDetail)
         case let .unavailable(mode, reason):
@@ -398,8 +398,8 @@ actor GatewayEndpointStore {
                 throw NSError(domain: "GatewayEndpoint", code: 1, userInfo: [NSLocalizedDescriptionKey: reason])
             }
 
-            // Auto-recover for remote mode: if the SSH control tunnel died (or hasn't been created yet),
-            // recreate it on demand so callers can recover without a manual reconnect.
+            // 远程模式自动恢复:如果 SSH 控制隧道已停止(或尚未创建),
+            // 按需重新创建它,以便调用者可以在不手动重新连接的情况下恢复。
             self.logger.info(
                 "endpoint unavailable; ensuring remote control tunnel reason=\(reason, privacy: .public)")
             return try await self.ensureRemoteConfig(detail: Self.remoteConnectingDetail)
@@ -430,7 +430,7 @@ actor GatewayEndpointStore {
             throw NSError(
                 domain: "RemoteTunnel",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Remote mode is not enabled"])
+                userInfo: [NSLocalizedDescriptionKey: "远程模式未启用"])
         }
 
         let root = MoltbotConfigFile.loadDict()
@@ -439,7 +439,7 @@ actor GatewayEndpointStore {
                 throw NSError(
                     domain: "GatewayEndpoint",
                     code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "gateway.remote.url missing or invalid"])
+                    userInfo: [NSLocalizedDescriptionKey: "gateway.remote.url 缺失或无效"])
             }
             let token = self.deps.token()
             let password = self.deps.password()
@@ -450,7 +450,7 @@ actor GatewayEndpointStore {
 
         self.kickRemoteEnsureIfNeeded(detail: detail)
         guard let ensure = self.remoteEnsure else {
-            throw NSError(domain: "GatewayEndpoint", code: 1, userInfo: [NSLocalizedDescriptionKey: "Connecting…"])
+            throw NSError(domain: "GatewayEndpoint", code: 1, userInfo: [NSLocalizedDescriptionKey: "正在连接…"])
         }
 
         do {
@@ -460,7 +460,7 @@ actor GatewayEndpointStore {
                 throw NSError(
                     domain: "RemoteTunnel",
                     code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Remote mode is not enabled"])
+                    userInfo: [NSLocalizedDescriptionKey: "远程模式未启用"])
             }
 
             if self.remoteEnsure?.token == ensure.token {
@@ -484,7 +484,7 @@ actor GatewayEndpointStore {
             if self.remoteEnsure?.token == ensure.token {
                 self.remoteEnsure = nil
             }
-            let msg = "Remote control tunnel failed (\(error.localizedDescription))"
+            let msg = "远程控制隧道失败 (\(error.localizedDescription))"
             self.setState(.unavailable(mode: .remote, reason: msg))
             self.logger.error("remote control tunnel ensure failed \(msg, privacy: .public)")
             throw NSError(domain: "GatewayEndpoint", code: 1, userInfo: [NSLocalizedDescriptionKey: msg])
@@ -622,7 +622,7 @@ extension GatewayEndpointStore {
     static func dashboardURL(for config: GatewayConnection.Config) throws -> URL {
         guard var components = URLComponents(url: config.url, resolvingAgainstBaseURL: false) else {
             throw NSError(domain: "Dashboard", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "Invalid gateway URL",
+                NSLocalizedDescriptionKey: "无效的网关 URL",
             ])
         }
         switch components.scheme?.lowercased() {
@@ -648,7 +648,7 @@ extension GatewayEndpointStore {
         components.queryItems = queryItems.isEmpty ? nil : queryItems
         guard let url = components.url else {
             throw NSError(domain: "Dashboard", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "Failed to build dashboard URL",
+                NSLocalizedDescriptionKey: "构建仪表板 URL 失败",
             ])
         }
         return url

@@ -1,19 +1,21 @@
 import SwiftUI
 
+/// 语音唤醒测试卡片视图
+/// 用于测试语音唤醒功能的UI组件
 struct VoiceWakeTestCard: View {
-    @Binding var testState: VoiceWakeTestState
-    @Binding var isTesting: Bool
-    let onToggle: () -> Void
+    @Binding var testState: VoiceWakeTestState  // 测试状态
+    @Binding var isTesting: Bool                // 是否正在测试
+    let onToggle: () -> Void                    // 切换测试状态的回调
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Test Voice Wake")
+                Text("测试语音唤醒")
                     .font(.callout.weight(.semibold))
                 Spacer()
                 Button(action: self.onToggle) {
                     Label(
-                        self.isTesting ? "Stop" : "Start test",
+                        self.isTesting ? "停止" : "开始测试",
                         systemImage: self.isTesting ? "stop.circle.fill" : "play.circle")
                 }
                 .buttonStyle(.borderedProminent)
@@ -27,7 +29,7 @@ struct VoiceWakeTestCard: View {
                         .font(.subheadline)
                         .frame(maxHeight: 22, alignment: .center)
                     if case let .detected(text) = testState {
-                        Text("Heard: \(text)")
+                        Text("听到: \(text)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
@@ -43,6 +45,7 @@ struct VoiceWakeTestCard: View {
         .padding(.vertical, 2)
     }
 
+    /// 状态图标视图
     private var statusIcon: some View {
         switch self.testState {
         case .idle:
@@ -68,25 +71,26 @@ struct VoiceWakeTestCard: View {
         }
     }
 
+    /// 状态文本
     private var statusText: String {
         switch self.testState {
         case .idle:
-            "Press start, say a trigger word, and wait for detection."
+            "点击开始，说出唤醒词，等待检测。"
 
         case .requesting:
-            "Requesting mic & speech permission…"
+            "正在请求麦克风和语音权限…"
 
         case .listening:
-            "Listening… say your trigger word."
+            "正在监听…请说出唤醒词。"
 
         case let .hearing(text):
-            "Heard: \(text)"
+            "听到: \(text)"
 
         case .finalizing:
-            "Finalizing…"
+            "正在完成…"
 
         case .detected:
-            "Voice wake detected!"
+            "检测到语音唤醒！"
 
         case let .failed(reason):
             reason

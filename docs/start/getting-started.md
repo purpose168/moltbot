@@ -1,31 +1,30 @@
 ---
-summary: "Beginner guide: from zero to first message (wizard, auth, channels, pairing)"
+summary: "初学者指南：从零到第一条消息（向导、认证、频道、配对）"
 read_when:
-  - First time setup from zero
-  - You want the fastest path from install → onboarding → first message
+  - 首次从零开始设置
+  - 您希望以最快的路径从安装 → 引导 → 第一条消息
 ---
 
-# Getting Started
+# 入门指南
 
-Goal: go from **zero** → **first working chat** (with sane defaults) as quickly as possible.
+目标：尽可能快地从**零** → **第一个正常工作的聊天**（使用合理的默认设置）。
 
-Fastest chat: open the Control UI (no channel setup needed). Run `moltbot dashboard`
-and chat in the browser, or open `http://127.0.0.1:18789/` on the gateway host.
-Docs: [Dashboard](/web/dashboard) and [Control UI](/web/control-ui).
+最快的聊天方式：打开控制 UI（无需频道设置）。运行 `moltbot dashboard` 并在浏览器中聊天，或在网关节点上打开 `http://127.0.0.1:18789/`。
+文档：[仪表板](/web/dashboard) 和 [控制 UI](/web/control-ui)。
 
-Recommended path: use the **CLI onboarding wizard** (`moltbot onboard`). It sets up:
-- model/auth (OAuth recommended)
-- gateway settings
-- channels (WhatsApp/Telegram/Discord/Mattermost (plugin)/...)
-- pairing defaults (secure DMs)
-- workspace bootstrap + skills
-- optional background service
+推荐路径：使用**命令行引导向导**（`moltbot onboard`）。它会设置：
+- 模型/认证（推荐使用 OAuth）
+- 网关设置
+- 频道（WhatsApp/Telegram/Discord/Mattermost（插件）/...）
+- 配对默认值（安全私信）
+- 工作区引导 + 技能
+- 可选的后台服务
 
-If you want the deeper reference pages, jump to: [Wizard](/start/wizard), [Setup](/start/setup), [Pairing](/start/pairing), [Security](/gateway/security).
+如果您需要更深入的参考页面，请跳转到：[向导](/start/wizard)、[设置](/start/setup)、[配对](/start/pairing)、[安全](/gateway/security)。
 
-Sandboxing note: `agents.defaults.sandbox.mode: "non-main"` uses `session.mainKey` (default `"main"`),
-so group/channel sessions are sandboxed. If you want the main agent to always
-run on host, set an explicit per-agent override:
+沙箱说明：`agents.defaults.sandbox.mode: "non-main"` 使用 `session.mainKey`（默认值 `"main"`），
+因此群组/频道会话会被沙箱隔离。如果您希望主智能体始终
+在主机上运行，请设置明确的智能体覆盖：
 
 ```json
 {
@@ -40,32 +39,32 @@ run on host, set an explicit per-agent override:
 }
 ```
 
-## 0) Prereqs
+## 0) 前提条件
 
 - Node `>=22`
-- `pnpm` (optional; recommended if you build from source)
-- **Recommended:** Brave Search API key for web search. Easiest path:
-  `moltbot configure --section web` (stores `tools.web.search.apiKey`).
-  See [Web tools](/tools/web).
+- `pnpm`（可选；如果从源代码构建，建议使用）
+- **推荐：** 用于网络搜索的 Brave Search API 密钥。最简单的路径：
+  `moltbot configure --section web`（存储 `tools.web.search.apiKey`）。
+  请参阅 [Web 工具](/tools/web)。
 
-macOS: if you plan to build the apps, install Xcode / CLT. For the CLI + gateway only, Node is enough.
-Windows: use **WSL2** (Ubuntu recommended). WSL2 is strongly recommended; native Windows is untested, more problematic, and has poorer tool compatibility. Install WSL2 first, then run the Linux steps inside WSL. See [Windows (WSL2)](/platforms/windows).
+macOS：如果您计划构建应用程序，请安装 Xcode / CLT。对于仅 CLI + 网关，Node 就足够了。
+Windows：使用**WSL2**（推荐 Ubuntu）。强烈推荐 WSL2；原生 Windows 未经测试，问题更多，且工具兼容性更差。首先安装 WSL2，然后在 WSL 内运行 Linux 步骤。请参阅 [Windows (WSL2)](/platforms/windows)。
 
-## 1) Install the CLI (recommended)
+## 1) 安装 CLI（推荐）
 
 ```bash
 curl -fsSL https://molt.bot/install.sh | bash
 ```
 
-Installer options (install method, non-interactive, from GitHub): [Install](/install).
+安装程序选项（安装方法、非交互式、从 GitHub）：[安装](/install)。
 
-Windows (PowerShell):
+Windows（PowerShell）：
 
 ```powershell
 iwr -useb https://molt.bot/install.ps1 | iex
 ```
 
-Alternative (global install):
+替代方案（全局安装）：
 
 ```bash
 npm install -g moltbot@latest
@@ -75,52 +74,52 @@ npm install -g moltbot@latest
 pnpm add -g moltbot@latest
 ```
 
-## 2) Run the onboarding wizard (and install the service)
+## 2) 运行引导向导（并安装服务）
 
 ```bash
 moltbot onboard --install-daemon
 ```
 
-What you’ll choose:
-- **Local vs Remote** gateway
-- **Auth**: OpenAI Code (Codex) subscription (OAuth) or API keys. For Anthropic we recommend an API key; `claude setup-token` is also supported.
-- **Providers**: WhatsApp QR login, Telegram/Discord bot tokens, Mattermost plugin tokens, etc.
-- **Daemon**: background install (launchd/systemd; WSL2 uses systemd)
-  - **Runtime**: Node (recommended; required for WhatsApp/Telegram). Bun is **not recommended**.
-- **Gateway token**: the wizard generates one by default (even on loopback) and stores it in `gateway.auth.token`.
+您将选择：
+- **本地 vs 远程** 网关
+- **认证**：OpenAI Code（Codex）订阅（OAuth）或 API 密钥。对于 Anthropic，我们推荐 API 密钥；也支持 `claude setup-token`。
+- **提供商**：WhatsApp QR 登录、Telegram/Discord 机器人令牌、Mattermost 插件令牌等。
+- **守护进程**：后台安装（launchd/systemd；WSL2 使用 systemd）
+  - **运行时**：Node（推荐；WhatsApp/Telegram 必需）。**不推荐**使用 Bun。
+- **网关令牌**：向导默认会生成一个（即使在回环网络上）并将其存储在 `gateway.auth.token` 中。
 
-Wizard doc: [Wizard](/start/wizard)
+向导文档：[向导](/start/wizard)
 
-### Auth: where it lives (important)
+### 认证：存储位置（重要）
 
-- **Recommended Anthropic path:** set an API key (wizard can store it for service use). `claude setup-token` is also supported if you want to reuse Claude Code credentials.
+- **推荐的 Anthropic 路径：** 设置 API 密钥（向导可以为服务使用存储它）。如果您想重用 Claude Code 凭据，也支持 `claude setup-token`。
 
-- OAuth credentials (legacy import): `~/.clawdbot/credentials/oauth.json`
-- Auth profiles (OAuth + API keys): `~/.clawdbot/agents/<agentId>/agent/auth-profiles.json`
+- OAuth 凭据（旧版导入）：`~/.clawdbot/credentials/oauth.json`
+- 认证配置文件（OAuth + API 密钥）：`~/.clawdbot/agents/<agentId>/agent/auth-profiles.json`
 
-Headless/server tip: do OAuth on a normal machine first, then copy `oauth.json` to the gateway host.
+无头/服务器提示：首先在普通机器上进行 OAuth，然后将 `oauth.json` 复制到网关节点。
 
-## 3) Start the Gateway
+## 3) 启动网关
 
-If you installed the service during onboarding, the Gateway should already be running:
+如果您在引导过程中安装了服务，网关应该已经在运行：
 
 ```bash
 moltbot gateway status
 ```
 
-Manual run (foreground):
+手动运行（前台）：
 
 ```bash
 moltbot gateway --port 18789 --verbose
 ```
 
-Dashboard (local loopback): `http://127.0.0.1:18789/`
-If a token is configured, paste it into the Control UI settings (stored as `connect.params.auth.token`).
+仪表板（本地回环）：`http://127.0.0.1:18789/`
+如果配置了令牌，请将其粘贴到控制 UI 设置中（存储为 `connect.params.auth.token`）。
 
-⚠️ **Bun warning (WhatsApp + Telegram):** Bun has known issues with these
-channels. If you use WhatsApp or Telegram, run the Gateway with **Node**.
+⚠️ **Bun 警告（WhatsApp + Telegram）：** Bun 在这些
+频道上存在已知问题。如果您使用 WhatsApp 或 Telegram，请使用**Node**运行网关。
 
-## 3.5) Quick verify (2 min)
+## 3.5) 快速验证（2 分钟）
 
 ```bash
 moltbot status
@@ -128,77 +127,77 @@ moltbot health
 moltbot security audit --deep
 ```
 
-## 4) Pair + connect your first chat surface
+## 4) 配对并连接您的第一个聊天界面
 
-### WhatsApp (QR login)
+### WhatsApp（QR 登录）
 
 ```bash
 moltbot channels login
 ```
 
-Scan via WhatsApp → Settings → Linked Devices.
+通过 WhatsApp → 设置 → 链接设备进行扫描。
 
-WhatsApp doc: [WhatsApp](/channels/whatsapp)
+WhatsApp 文档：[WhatsApp](/channels/whatsapp)
 
-### Telegram / Discord / others
+### Telegram / Discord / 其他
 
-The wizard can write tokens/config for you. If you prefer manual config, start with:
-- Telegram: [Telegram](/channels/telegram)
-- Discord: [Discord](/channels/discord)
-- Mattermost (plugin): [Mattermost](/channels/mattermost)
+向导可以为您写入令牌/配置。如果您更喜欢手动配置，请从以下开始：
+- Telegram：[Telegram](/channels/telegram)
+- Discord：[Discord](/channels/discord)
+- Mattermost（插件）：[Mattermost](/channels/mattermost)
 
-**Telegram DM tip:** your first DM returns a pairing code. Approve it (see next step) or the bot won’t respond.
+**Telegram 私信提示：** 您的第一条私信会返回一个配对代码。请批准它（见下一步），否则机器人不会响应。
 
-## 5) DM safety (pairing approvals)
+## 5) 私信安全（配对批准）
 
-Default posture: unknown DMs get a short code and messages are not processed until approved.
-If your first DM gets no reply, approve the pairing:
+默认姿态：未知私信会收到一个短代码，消息在批准前不会被处理。
+如果您的第一条私信没有回复，请批准配对：
 
 ```bash
 moltbot pairing list whatsapp
 moltbot pairing approve whatsapp <code>
 ```
 
-Pairing doc: [Pairing](/start/pairing)
+配对文档：[配对](/start/pairing)
 
-## From source (development)
+## 从源代码（开发）
 
-If you’re hacking on Moltbot itself, run from source:
+如果您正在修改 Moltbot 本身，请从源代码运行：
 
 ```bash
 git clone https://github.com/moltbot/moltbot.git
 cd moltbot
 pnpm install
-pnpm ui:build # auto-installs UI deps on first run
+pnpm ui:build # 首次运行时自动安装 UI 依赖
 pnpm build
 moltbot onboard --install-daemon
 ```
 
-If you don’t have a global install yet, run the onboarding step via `pnpm moltbot ...` from the repo.
-`pnpm build` also bundles A2UI assets; if you need to run just that step, use `pnpm canvas:a2ui:bundle`.
+如果您还没有全局安装，请通过 `pnpm moltbot ...` 从仓库运行引导步骤。
+`pnpm build` 还会打包 A2UI 资产；如果您只需要运行该步骤，请使用 `pnpm canvas:a2ui:bundle`。
 
-Gateway (from this repo):
+网关（从本仓库）：
 
 ```bash
 node moltbot.mjs gateway --port 18789 --verbose
 ```
 
-## 7) Verify end-to-end
+## 7) 端到端验证
 
-In a new terminal, send a test message:
+在新终端中，发送测试消息：
 
 ```bash
 moltbot message send --target +15555550123 --message "Hello from Moltbot"
 ```
 
-If `moltbot health` shows “no auth configured”, go back to the wizard and set OAuth/key auth — the agent won’t be able to respond without it.
+如果 `moltbot health` 显示 "no auth configured"，请返回向导并设置 OAuth/密钥认证 — 没有它，智能体将无法响应。
 
-Tip: `moltbot status --all` is the best pasteable, read-only debug report.
-Health probes: `moltbot health` (or `moltbot status --deep`) asks the running gateway for a health snapshot.
+提示：`moltbot status --all` 是最好的可粘贴、只读调试报告。
+健康探测：`moltbot health`（或 `moltbot status --deep`）向运行中的网关请求健康快照。
 
-## Next steps (optional, but great)
+## 后续步骤（可选，但很棒）
 
-- macOS menu bar app + voice wake: [macOS app](/platforms/macos)
-- iOS/Android nodes (Canvas/camera/voice): [Nodes](/nodes)
-- Remote access (SSH tunnel / Tailscale Serve): [Remote access](/gateway/remote) and [Tailscale](/gateway/tailscale)
-- Always-on / VPN setups: [Remote access](/gateway/remote), [exe.dev](/platforms/exe-dev), [Hetzner](/platforms/hetzner), [macOS remote](/platforms/mac/remote)
+- macOS 菜单栏应用 + 语音唤醒：[macOS 应用](/platforms/macos)
+- iOS/Android 节点（画布/摄像头/语音）：[节点](/nodes)
+- 远程访问（SSH 隧道 / Tailscale Serve）：[远程访问](/gateway/remote) 和 [Tailscale](/gateway/tailscale)
+- 始终在线 / VPN 设置：[远程访问](/gateway/remote)、[exe.dev](/platforms/exe-dev)、[Hetzner](/platforms/hetzner)、[macOS 远程](/platforms/mac/remote)

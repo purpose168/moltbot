@@ -10,39 +10,62 @@ import AppKit
 import UIKit
 #endif
 
+// 聊天UI相关的日志记录器
 private let chatUILogger = Logger(subsystem: "bot.molt", category: "MoltbotChatUI")
 
+/// 聊天界面的视图模型，管理聊天状态和逻辑
 @MainActor
 @Observable
 public final class MoltbotChatViewModel {
+    /// 聊天消息列表
     public private(set) var messages: [MoltbotChatMessage] = []
+    /// 用户输入文本
     public var input: String = ""
+    /// 思考级别设置
     public var thinkingLevel: String = "off"
+    /// 是否正在加载
     public private(set) var isLoading = false
+    /// 是否正在发送消息
     public private(set) var isSending = false
+    /// 是否正在中止操作
     public private(set) var isAborting = false
+    /// 错误文本
     public var errorText: String?
+    /// 待发送的附件
     public var attachments: [MoltbotPendingAttachment] = []
+    /// 服务健康状态
     public private(set) var healthOK: Bool = false
+    /// 待处理的运行数量
     public private(set) var pendingRunCount: Int = 0
 
+    /// 会话密钥
     public private(set) var sessionKey: String
+    /// 会话ID
     public private(set) var sessionId: String?
+    /// 流式助手文本
     public private(set) var streamingAssistantText: String?
+    /// 待处理的工具调用
     public private(set) var pendingToolCalls: [MoltbotChatPendingToolCall] = []
+    /// 会话列表
     public private(set) var sessions: [MoltbotChatSessionEntry] = []
+    /// 传输层实现
     private let transport: any MoltbotChatTransport
 
+    /// 事件处理任务
     @ObservationIgnored
     private nonisolated(unsafe) var eventTask: Task<Void, Never>?
+    /// 待处理的运行ID集合
     private var pendingRuns = Set<String>() {
         didSet { self.pendingRunCount = self.pendingRuns.count }
     }
 
+    /// 待处理运行的超时任务
     @ObservationIgnored
     private nonisolated(unsafe) var pendingRunTimeoutTasks: [String: Task<Void, Never>] = [:]
+    /// 待处理运行的超时时间（毫秒）
     private let pendingRunTimeoutMs: UInt64 = 120_000
 
+    /// 按ID存储的待处理工具调用
     private var pendingToolCallsById: [String: MoltbotChatPendingToolCall] = [:] {
         didSet {
             self.pendingToolCalls = self.pendingToolCallsById.values
@@ -50,12 +73,18 @@ public final class MoltbotChatViewModel {
         }
     }
 
+    /// 上次健康检查的时间
     private var lastHealthPollAt: Date?
 
+    /// 初始化聊天视图模型
+    /// - Parameters:
+    ///   - sessionKey: 会话密钥
+    ///   - transport: 聊天传输层实现
     public init(sessionKey: String, transport: any MoltbotChatTransport) {
         self.sessionKey = sessionKey
         self.transport = transport
 
+        // 启动事件处理任务
         self.eventTask = Task { [weak self] in
             guard let self else { return }
             let stream = self.transport.events()
@@ -68,43 +97,58 @@ public final class MoltbotChatViewModel {
         }
     }
 
+    /// 析构函数，清理资源
     deinit {
+        // 取消事件处理任务
         self.eventTask?.cancel()
+        // 取消所有超时任务
         for (_, task) in self.pendingRunTimeoutTasks {
             task.cancel()
         }
     }
 
+    /// 加载聊天数据
     public func load() {
         Task { await self.bootstrap() }
     }
 
+    /// 刷新聊天数据
     public func refresh() {
         Task { await self.bootstrap() }
     }
 
+    /// 发送消息
     public func send() {
         Task { await self.performSend() }
     }
 
+    /// 中止当前操作
     public func abort() {
         Task { await self.performAbort() }
     }
 
+    /// 刷新会话列表
+    /// - Parameter limit: 限制返回的会话数量
     public func refreshSessions(limit: Int? = nil) {
         Task { await self.fetchSessions(limit: limit) }
     }
 
+    /// 切换到指定会话
+    /// - Parameter sessionKey: 目标会话密钥
     public func switchSession(to sessionKey: String) {
         Task { await self.performSwitchSession(to: sessionKey) }
     }
 
+    /// 获取会话选择列表
+    /// - Returns: 排序后的会话列表
     public var sessionChoices: [MoltbotChatSessionEntry] {
         let now = Date().timeIntervalSince1970 * 1000
-        let cutoff = now - (24 * 60 * 60 * 1000)
+        let cutoff = now - (24 * 60 * 60 * 1000) // 24小时前
         let sorted = self.sessions.sorted { ($0.updatedAt ?? 0) > ($1.updatedAt ?? 0) }
         var seen = Set<String>()
         var recent: [MoltbotChatSessionEntry] = []
+        
+        // 筛选最近24小时的会话
         for entry in sorted {
             guard !seen.contains(entry.key) else { continue }
             seen.insert(entry.key)
@@ -114,11 +158,14 @@ public final class MoltbotChatViewModel {
 
         var result: [MoltbotChatSessionEntry] = []
         var included = Set<String>()
+        
+        // 去重并添加到结果
         for entry in recent where !included.contains(entry.key) {
             result.append(entry)
             included.insert(entry.key)
         }
 
+        // 如果当前会话不在结果中，添加它
         if !included.contains(self.sessionKey) {
             if let current = sorted.first(where: { $0.key == self.sessionKey }) {
                 result.append(current)
@@ -130,25 +177,36 @@ public final class MoltbotChatViewModel {
         return result
     }
 
+    /// 添加附件
+    /// - Parameter urls: 附件文件URL数组
     public func addAttachments(urls: [URL]) {
         Task { await self.loadAttachments(urls: urls) }
     }
 
+    /// 添加图片附件
+    /// - Parameters:
+    ///   - data: 图片数据
+    ///   - fileName: 文件名
+    ///   - mimeType: MIME类型
     public func addImageAttachment(data: Data, fileName: String, mimeType: String) {
         Task { await self.addImageAttachment(url: nil, data: data, fileName: fileName, mimeType: mimeType) }
     }
 
+    /// 移除附件
+    /// - Parameter id: 附件ID
     public func removeAttachment(_ id: MoltbotPendingAttachment.ID) {
         self.attachments.removeAll { $0.id == id }
     }
 
+    /// 是否可以发送消息
     public var canSend: Bool {
         let trimmed = self.input.trimmingCharacters(in: .whitespacesAndNewlines)
         return !self.isSending && self.pendingRunCount == 0 && (!trimmed.isEmpty || !self.attachments.isEmpty)
     }
 
-    // MARK: - Internals
+    // MARK: - 内部方法
 
+    /// 初始化并加载聊天数据
     private func bootstrap() async {
         self.isLoading = true
         self.errorText = nil
@@ -158,20 +216,28 @@ public final class MoltbotChatViewModel {
         self.streamingAssistantText = nil
         self.sessionId = nil
         defer { self.isLoading = false }
+        
         do {
+            // 设置活跃会话密钥
             do {
                 try await self.transport.setActiveSessionKey(self.sessionKey)
             } catch {
-                // Best-effort only; history/send/health still work without push events.
+                // 尽力而为；即使没有推送事件，历史记录/发送/健康检查仍然有效
             }
 
+            // 请求聊天历史
             let payload = try await self.transport.requestHistory(sessionKey: self.sessionKey)
             self.messages = Self.decodeMessages(payload.messages ?? [])
             self.sessionId = payload.sessionId
+            
+            // 设置思考级别
             if let level = payload.thinkingLevel, !level.isEmpty {
                 self.thinkingLevel = level
             }
+            
+            // 检查服务健康状态
             await self.pollHealthIfNeeded(force: true)
+            // 获取会话列表
             await self.fetchSessions(limit: 50)
             self.errorText = nil
         } catch {
@@ -180,6 +246,9 @@ public final class MoltbotChatViewModel {
         }
     }
 
+    /// 解码消息
+    /// - Parameter raw: 原始消息数据
+    /// - Returns: 解码后的消息数组
     private static func decodeMessages(_ raw: [AnyCodable]) -> [MoltbotChatMessage] {
         let decoded = raw.compactMap { item in
             (try? ChatPayloadDecoding.decode(item, as: MoltbotChatMessage.self))
@@ -187,6 +256,9 @@ public final class MoltbotChatViewModel {
         return Self.dedupeMessages(decoded)
     }
 
+    /// 去重消息
+    /// - Parameter messages: 消息数组
+    /// - Returns: 去重后的消息数组
     private static func dedupeMessages(_ messages: [MoltbotChatMessage]) -> [MoltbotChatMessage] {
         var result: [MoltbotChatMessage] = []
         result.reserveCapacity(messages.count)
@@ -205,6 +277,9 @@ public final class MoltbotChatViewModel {
         return result
     }
 
+    /// 生成消息去重键
+    /// - Parameter message: 消息
+    /// - Returns: 去重键
     private static func dedupeKey(for message: MoltbotChatMessage) -> String? {
         guard let timestamp = message.timestamp else { return nil }
         let text = message.content.compactMap(\.text).joined(separator: "\n")
@@ -213,13 +288,15 @@ public final class MoltbotChatViewModel {
         return "\(message.role)|\(timestamp)|\(text)"
     }
 
+    /// 执行发送消息操作
     private func performSend() async {
         guard !self.isSending else { return }
         let trimmed = self.input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty || !self.attachments.isEmpty else { return }
 
+        // 检查服务健康状态
         guard self.healthOK else {
-            self.errorText = "Gateway health not OK; cannot send"
+            self.errorText = "网关健康状态不正常，无法发送消息"
             return
         }
 
@@ -232,7 +309,7 @@ public final class MoltbotChatViewModel {
         self.pendingToolCallsById = [:]
         self.streamingAssistantText = nil
 
-        // Optimistically append user message to UI.
+        // 乐观地将用户消息添加到UI
         var userContent: [MoltbotChatMessageContent] = [
             MoltbotChatMessageContent(
                 type: "text",
@@ -246,6 +323,8 @@ public final class MoltbotChatViewModel {
                 name: nil,
                 arguments: nil),
         ]
+        
+        // 编码附件
         let encodedAttachments = self.attachments.map { att -> MoltbotChatAttachmentPayload in
             MoltbotChatAttachmentPayload(
                 type: att.type,
@@ -253,6 +332,8 @@ public final class MoltbotChatViewModel {
                 fileName: att.fileName,
                 content: att.data.base64EncodedString())
         }
+        
+        // 添加附件到消息内容
         for att in encodedAttachments {
             userContent.append(
                 MoltbotChatMessageContent(
@@ -267,6 +348,8 @@ public final class MoltbotChatViewModel {
                     name: nil,
                     arguments: nil))
         }
+        
+        // 添加用户消息到UI
         self.messages.append(
             MoltbotChatMessage(
                 id: UUID(),
@@ -274,17 +357,20 @@ public final class MoltbotChatViewModel {
                 content: userContent,
                 timestamp: Date().timeIntervalSince1970 * 1000))
 
-        // Clear input immediately for responsive UX (before network await)
+        // 立即清空输入，提高用户体验（在网络请求之前）
         self.input = ""
         self.attachments = []
 
         do {
+            // 发送消息
             let response = try await self.transport.sendMessage(
                 sessionKey: self.sessionKey,
                 message: messageText,
                 thinking: self.thinkingLevel,
                 idempotencyKey: runId,
                 attachments: encodedAttachments)
+            
+            // 如果返回的runId与我们生成的不同，更新
             if response.runId != runId {
                 self.clearPendingRun(runId)
                 self.pendingRuns.insert(response.runId)
@@ -299,6 +385,7 @@ public final class MoltbotChatViewModel {
         self.isSending = false
     }
 
+    /// 执行中止操作
     private func performAbort() async {
         guard !self.pendingRuns.isEmpty else { return }
         guard !self.isAborting else { return }
@@ -310,20 +397,24 @@ public final class MoltbotChatViewModel {
             do {
                 try await self.transport.abortRun(sessionKey: self.sessionKey, runId: runId)
             } catch {
-                // Best-effort.
+                // 尽力而为
             }
         }
     }
 
+    /// 获取会话列表
+    /// - Parameter limit: 限制返回的会话数量
     private func fetchSessions(limit: Int?) async {
         do {
             let res = try await self.transport.listSessions(limit: limit)
             self.sessions = res.sessions
         } catch {
-            // Best-effort.
+            // 尽力而为
         }
     }
 
+    /// 执行会话切换
+    /// - Parameter sessionKey: 目标会话密钥
     private func performSwitchSession(to sessionKey: String) async {
         let next = sessionKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !next.isEmpty else { return }
@@ -332,6 +423,9 @@ public final class MoltbotChatViewModel {
         await self.bootstrap()
     }
 
+    /// 创建会话占位符
+    /// - Parameter key: 会话密钥
+    /// - Returns: 会话占位符
     private func placeholderSession(key: String) -> MoltbotChatSessionEntry {
         MoltbotChatSessionEntry(
             key: key,
@@ -354,6 +448,8 @@ public final class MoltbotChatViewModel {
             contextTokens: nil)
     }
 
+    /// 处理传输层事件
+    /// - Parameter evt: 传输层事件
     private func handleTransportEvent(_ evt: MoltbotChatTransportEvent) {
         switch evt {
         case let .health(ok):
@@ -365,19 +461,22 @@ public final class MoltbotChatViewModel {
         case let .agent(agent):
             self.handleAgentEvent(agent)
         case .seqGap:
-            self.errorText = "Event stream interrupted; try refreshing."
+            self.errorText = "事件流中断，请尝试刷新"
             self.clearPendingRuns(reason: nil)
         }
     }
 
+    /// 处理聊天事件
+    /// - Parameter chat: 聊天事件数据
     private func handleChatEvent(_ chat: MoltbotChatEventPayload) {
+        // 检查会话密钥是否匹配
         if let sessionKey = chat.sessionKey, sessionKey != self.sessionKey {
             return
         }
 
         let isOurRun = chat.runId.flatMap { self.pendingRuns.contains($0) } ?? false
         if !isOurRun {
-            // Keep multiple clients in sync: if another client finishes a run for our session, refresh history.
+            // 保持多个客户端同步：如果另一个客户端完成了我们会话的运行，刷新历史记录
             switch chat.state {
             case "final", "aborted", "error":
                 self.streamingAssistantText = nil
@@ -392,7 +491,7 @@ public final class MoltbotChatViewModel {
         switch chat.state {
         case "final", "aborted", "error":
             if chat.state == "error" {
-                self.errorText = chat.errorMessage ?? "Chat failed"
+                self.errorText = chat.errorMessage ?? "聊天失败"
             }
             if let runId = chat.runId {
                 self.clearPendingRun(runId)
@@ -407,6 +506,8 @@ public final class MoltbotChatViewModel {
         }
     }
 
+    /// 处理代理事件
+    /// - Parameter evt: 代理事件数据
     private func handleAgentEvent(_ evt: MoltbotAgentEventPayload) {
         if let sessionId, evt.runId != sessionId {
             return
@@ -437,6 +538,7 @@ public final class MoltbotChatViewModel {
         }
     }
 
+    /// 运行完成后刷新历史记录
     private func refreshHistoryAfterRun() async {
         do {
             let payload = try await self.transport.requestHistory(sessionKey: self.sessionKey)
@@ -450,6 +552,8 @@ public final class MoltbotChatViewModel {
         }
     }
 
+    /// 为待处理运行设置超时
+    /// - Parameter runId: 运行ID
     private func armPendingRunTimeout(runId: String) {
         self.pendingRunTimeoutTasks[runId]?.cancel()
         self.pendingRunTimeoutTasks[runId] = Task { [weak self] in
@@ -459,17 +563,21 @@ public final class MoltbotChatViewModel {
                 guard let self else { return }
                 guard self.pendingRuns.contains(runId) else { return }
                 self.clearPendingRun(runId)
-                self.errorText = "Timed out waiting for a reply; try again or refresh."
+                self.errorText = "等待回复超时，请重试或刷新"
             }
         }
     }
 
+    /// 清除待处理运行
+    /// - Parameter runId: 运行ID
     private func clearPendingRun(_ runId: String) {
         self.pendingRuns.remove(runId)
         self.pendingRunTimeoutTasks[runId]?.cancel()
         self.pendingRunTimeoutTasks[runId] = nil
     }
 
+    /// 清除所有待处理运行
+    /// - Parameter reason: 清除原因
     private func clearPendingRuns(reason: String?) {
         for runId in self.pendingRuns {
             self.pendingRunTimeoutTasks[runId]?.cancel()
@@ -481,7 +589,10 @@ public final class MoltbotChatViewModel {
         }
     }
 
+    /// 检查服务健康状态（如果需要）
+    /// - Parameter force: 是否强制检查
     private func pollHealthIfNeeded(force: Bool) async {
+        // 如果不是强制检查，且上次检查时间不到10秒，则跳过
         if !force, let last = self.lastHealthPollAt, Date().timeIntervalSince(last) < 10 {
             return
         }
@@ -494,6 +605,8 @@ public final class MoltbotChatViewModel {
         }
     }
 
+    /// 加载附件
+    /// - Parameter urls: 附件URL数组
     private func loadAttachments(urls: [URL]) async {
         for url in urls {
             do {
@@ -509,30 +622,46 @@ public final class MoltbotChatViewModel {
         }
     }
 
+    /// 获取URL的MIME类型
+    /// - Parameter url: 文件URL
+    /// - Returns: MIME类型
     private static func mimeType(for url: URL) -> String? {
         let ext = url.pathExtension
         guard !ext.isEmpty else { return nil }
         return (UTType(filenameExtension: ext) ?? .data).preferredMIMEType
     }
 
+    /// 添加图片附件
+    /// - Parameters:
+    ///   - url: 文件URL
+    ///   - data: 图片数据
+    ///   - fileName: 文件名
+    ///   - mimeType: MIME类型
     private func addImageAttachment(url: URL?, data: Data, fileName: String, mimeType: String) async {
+        // 检查文件大小（限制5MB）
         if data.count > 5_000_000 {
-            self.errorText = "Attachment \(fileName) exceeds 5 MB limit"
+            self.errorText = "附件 \(fileName) 超过5MB限制"
             return
         }
 
+        // 确定文件类型
         let uti: UTType = {
             if let url {
                 return UTType(filenameExtension: url.pathExtension) ?? .data
             }
             return UTType(mimeType: mimeType) ?? .data
         }()
-        guard uti.conforms(to: .image) else {
-            self.errorText = "Only image attachments are supported right now"
+        
+        // 检查是否为图片类型
+        guard uti.conforms(to: .image) else { 
+            self.errorText = "目前仅支持图片附件"
             return
         }
 
+        // 生成预览图片
         let preview = Self.previewImage(data: data)
+        
+        // 添加到附件列表
         self.attachments.append(
             MoltbotPendingAttachment(
                 url: url,
@@ -542,6 +671,9 @@ public final class MoltbotChatViewModel {
                 preview: preview))
     }
 
+    /// 生成预览图片
+    /// - Parameter data: 图片数据
+    /// - Returns: 平台特定的图片对象
     private static func previewImage(data: Data) -> MoltbotPlatformImage? {
         #if canImport(AppKit)
         NSImage(data: data)

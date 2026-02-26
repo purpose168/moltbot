@@ -344,7 +344,7 @@ final class LocationPermissionRequester: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    // Legacy callback (still used on some macOS versions / configurations).
+    ///// 遗留回调(仍在某些 macOS 版本/配置上使用)。
     nonisolated func locationManager(
         _ manager: CLLocationManager,
         didChangeAuthorization status: CLAuthorizationStatus)

@@ -25,7 +25,7 @@ class VoiceWakeManager(
   private val _isListening = MutableStateFlow(false)
   val isListening: StateFlow<Boolean> = _isListening
 
-  private val _statusText = MutableStateFlow("Off")
+  private val _statusText = MutableStateFlow("已关闭") // Off
   val statusText: StateFlow<String> = _statusText
 
   var triggerWords: List<String> = emptyList()
@@ -47,7 +47,7 @@ class VoiceWakeManager(
 
       if (!SpeechRecognizer.isRecognitionAvailable(context)) {
         _isListening.value = false
-        _statusText.value = "Speech recognizer unavailable"
+        _statusText.value = "语音识别器不可用" // Speech recognizer unavailable
         return@post
       }
 
@@ -114,7 +114,7 @@ class VoiceWakeManager(
     lastDispatched = command
 
     scope.launch { onCommand(command) }
-    _statusText.value = "Triggered"
+    _statusText.value = "已触发" // Triggered
     scheduleRestart(delayMs = 650)
   }
 
@@ -138,21 +138,21 @@ class VoiceWakeManager(
         if (stopRequested) return
         _isListening.value = false
         if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
-          _statusText.value = "Microphone permission required"
+          _statusText.value = "需要麦克风权限" // Microphone permission required
           return
         }
 
         _statusText.value =
           when (error) {
-            SpeechRecognizer.ERROR_AUDIO -> "Audio error"
-            SpeechRecognizer.ERROR_CLIENT -> "Client error"
-            SpeechRecognizer.ERROR_NETWORK -> "Network error"
-            SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
-            SpeechRecognizer.ERROR_NO_MATCH -> "Listening"
-            SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy"
-            SpeechRecognizer.ERROR_SERVER -> "Server error"
-            SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Listening"
-            else -> "Speech error ($error)"
+            SpeechRecognizer.ERROR_AUDIO -> "音频错误" // Audio error
+            SpeechRecognizer.ERROR_CLIENT -> "客户端错误" // Client error
+            SpeechRecognizer.ERROR_NETWORK -> "网络错误" // Network error
+            SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "网络超时" // Network timeout
+            SpeechRecognizer.ERROR_NO_MATCH -> "正在监听" // Listening
+            SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "识别器忙碌" // Recognizer busy
+            SpeechRecognizer.ERROR_SERVER -> "服务器错误" // Server error
+            SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "正在监听" // Listening
+            else -> "语音错误 ($error)" // Speech error
           }
         scheduleRestart(delayMs = 600)
       }

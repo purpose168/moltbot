@@ -11,6 +11,13 @@ import java.security.spec.PKCS8EncodedKeySpec
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
+/**
+ * 设备身份数据类
+ * @param deviceId 设备ID
+ * @param publicKeyRawBase64 Base64编码的公钥
+ * @param privateKeyPkcs8Base64 Base64编码的PKCS8私钥
+ * @param createdAtMs 创建时间(毫秒)
+ */
 @Serializable
 data class DeviceIdentity(
   val deviceId: String,
@@ -19,10 +26,17 @@ data class DeviceIdentity(
   val createdAtMs: Long,
 )
 
+/**
+ * 设备身份存储类
+ * 负责管理设备身份的存储、加载和签名
+ */
 class DeviceIdentityStore(context: Context) {
   private val json = Json { ignoreUnknownKeys = true }
   private val identityFile = File(context.filesDir, "moltbot/identity/device.json")
 
+  /**
+   * 加载或创建设备身份
+   */
   @Synchronized
   fun loadOrCreate(): DeviceIdentity {
     val existing = load()
@@ -40,6 +54,12 @@ class DeviceIdentityStore(context: Context) {
     return fresh
   }
 
+  /**
+   * 签名负载
+   * @param payload 负载字符串
+   * @param identity 设备身份
+   * @return Base64 URL编码的签名,失败则返回null
+   */
   fun signPayload(payload: String, identity: DeviceIdentity): String? {
     return try {
       val privateKeyBytes = Base64.decode(identity.privateKeyPkcs8Base64, Base64.DEFAULT)
@@ -55,6 +75,11 @@ class DeviceIdentityStore(context: Context) {
     }
   }
 
+  /**
+   * 获取Base64 URL编码的公钥
+   * @param identity 设备身份
+   * @return Base64 URL编码的公钥,失败则返回null
+   */
   fun publicKeyBase64Url(identity: DeviceIdentity): String? {
     return try {
       val raw = Base64.decode(identity.publicKeyRawBase64, Base64.DEFAULT)
@@ -64,6 +89,9 @@ class DeviceIdentityStore(context: Context) {
     }
   }
 
+  /**
+   * 加载设备身份
+   */
   private fun load(): DeviceIdentity? {
     return try {
       if (!identityFile.exists()) return null
@@ -82,16 +110,22 @@ class DeviceIdentityStore(context: Context) {
     }
   }
 
+  /**
+   * 保存设备身份
+   */
   private fun save(identity: DeviceIdentity) {
     try {
       identityFile.parentFile?.mkdirs()
       val encoded = json.encodeToString(DeviceIdentity.serializer(), identity)
       identityFile.writeText(encoded, Charsets.UTF_8)
     } catch (_: Throwable) {
-      // best-effort only
+      // 仅尽力而为
     }
   }
 
+  /**
+   * 生成新的设备身份
+   */
   private fun generate(): DeviceIdentity {
     val keyPair = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
     val spki = keyPair.public.encoded
@@ -106,6 +140,9 @@ class DeviceIdentityStore(context: Context) {
     )
   }
 
+  /**
+   * 从公钥派生设备ID
+   */
   private fun deriveDeviceId(publicKeyRawBase64: String): String? {
     return try {
       val raw = Base64.decode(publicKeyRawBase64, Base64.DEFAULT)
@@ -115,6 +152,9 @@ class DeviceIdentityStore(context: Context) {
     }
   }
 
+  /**
+   * 去除SPKI前缀
+   */
   private fun stripSpkiPrefix(spki: ByteArray): ByteArray {
     if (spki.size == ED25519_SPKI_PREFIX.size + 32 &&
       spki.copyOfRange(0, ED25519_SPKI_PREFIX.size).contentEquals(ED25519_SPKI_PREFIX)
@@ -124,6 +164,9 @@ class DeviceIdentityStore(context: Context) {
     return spki
   }
 
+  /**
+   * 计算SHA-256哈希
+   */
   private fun sha256Hex(data: ByteArray): String {
     val digest = MessageDigest.getInstance("SHA-256").digest(data)
     val out = StringBuilder(digest.size * 2)
@@ -133,6 +176,9 @@ class DeviceIdentityStore(context: Context) {
     return out.toString()
   }
 
+  /**
+   * Base64 URL编码
+   */
   private fun base64UrlEncode(data: ByteArray): String {
     return Base64.encodeToString(data, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
   }

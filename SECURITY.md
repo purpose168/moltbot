@@ -1,46 +1,46 @@
-# Security Policy
+# 安全策略
 
-If you believe you've found a security issue in Moltbot, please report it privately.
+如果您认为您在 Moltbot 中发现了安全问题,请私下报告。
 
-## Reporting
+## 报告
 
-- Email: `steipete@gmail.com`
-- What to include: reproduction steps, impact assessment, and (if possible) a minimal PoC.
+- 邮箱: `steipete@gmail.com`
+- 包括的内容: 复现步骤、影响评估,以及(如果可能)最小的 PoC。
 
-## Operational Guidance
+## 运维指南
 
-For threat model + hardening guidance (including `moltbot security audit --deep` and `--fix`), see:
+有关威胁模型 + 加固指南(包括 `moltbot security audit --deep` 和 `--fix`),请参阅:
 
 - `https://docs.molt.bot/gateway/security`
 
-### Web Interface Safety
+### Web 界面安全
 
-Moltbot's web interface is intended for local use only. Do **not** bind it to the public internet; it is not hardened for public exposure.
+Moltbot 的 Web 界面仅用于本地使用。请**不要**将其绑定到公共互联网;它没有针对公共暴露进行加固。
 
-## Runtime Requirements
+## 运行时要求
 
-### Node.js Version
+### Node.js 版本
 
-Moltbot requires **Node.js 22.12.0 or later** (LTS). This version includes important security patches:
+Moltbot 需要 **Node.js 22.12.0 或更高版本**(LTS)。此版本包含重要的安全补丁:
 
-- CVE-2025-59466: async_hooks DoS vulnerability
-- CVE-2026-21636: Permission model bypass vulnerability
+- CVE-2025-59466: async_hooks DoS 漏洞
+- CVE-2026-21636: 权限模型绕过漏洞
 
-Verify your Node.js version:
+验证您的 Node.js 版本:
 
 ```bash
-node --version  # Should be v22.12.0 or later
+node --version  # 应该是 v22.12.0 或更高版本
 ```
 
-### Docker Security
+### Docker 安全
 
-When running Moltbot in Docker:
+在 Docker 中运行 Moltbot 时:
 
-1. The official image runs as a non-root user (`node`) for reduced attack surface
-2. Use `--read-only` flag when possible for additional filesystem protection
-3. Limit container capabilities with `--cap-drop=ALL`
+1. 官方镜像以非 root 用户(`node`)运行,以减少攻击面
+2. 尽可能使用 `--read-only` 标志以获得额外的文件系统保护
+3. 使用 `--cap-drop=ALL` 限制容器能力
 
-Example secure Docker run:
+安全 Docker 运行示例:
 
 ```bash
 docker run --read-only --cap-drop=ALL \
@@ -48,12 +48,12 @@ docker run --read-only --cap-drop=ALL \
   moltbot/moltbot:latest
 ```
 
-## Security Scanning
+## 安全扫描
 
-This project uses `detect-secrets` for automated secret detection in CI/CD.
-See `.detect-secrets.cfg` for configuration and `.secrets.baseline` for the baseline.
+此项目使用 `detect-secrets` 在 CI/CD 中进行自动密钥检测。
+有关配置,请参阅 `.detect-secrets.cfg`;有关基线,请参阅 `.secrets.baseline`。
 
-Run locally:
+本地运行:
 
 ```bash
 pip install detect-secrets==1.5.0

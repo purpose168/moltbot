@@ -22,6 +22,10 @@ import bot.molt.android.ui.RootScreen
 import bot.molt.android.ui.MoltbotTheme
 import kotlinx.coroutines.launch
 
+/**
+ * 主活动类
+ * 负责应用的初始化、权限请求和UI设置
+ */
 class MainActivity : ComponentActivity() {
   private val viewModel: MainViewModel by viewModels()
   private lateinit var permissionRequester: PermissionRequester
@@ -29,20 +33,27 @@ class MainActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    // 启用WebView调试(仅在调试模式下)
     val isDebuggable = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     WebView.setWebContentsDebuggingEnabled(isDebuggable)
+    // 应用沉浸式模式
     applyImmersiveMode()
+    // 请求必要的权限
     requestDiscoveryPermissionsIfNeeded()
     requestNotificationPermissionIfNeeded()
+    // 启动前台服务
     NodeForegroundService.start(this)
+    // 初始化权限请求器
     permissionRequester = PermissionRequester(this)
     screenCaptureRequester = ScreenCaptureRequester(this)
+    // 附加生命周期和权限处理器
     viewModel.camera.attachLifecycleOwner(this)
     viewModel.camera.attachPermissionRequester(permissionRequester)
     viewModel.sms.attachPermissionRequester(permissionRequester)
     viewModel.screenRecorder.attachScreenCaptureRequester(screenCaptureRequester)
     viewModel.screenRecorder.attachPermissionRequester(permissionRequester)
 
+    // 监听防睡眠设置
     lifecycleScope.launch {
       repeatOnLifecycle(Lifecycle.State.STARTED) {
         viewModel.preventSleep.collect { enabled ->
@@ -55,6 +66,7 @@ class MainActivity : ComponentActivity() {
       }
     }
 
+    // 设置Compose UI
     setContent {
       MoltbotTheme {
         Surface(modifier = Modifier) {
@@ -86,6 +98,9 @@ class MainActivity : ComponentActivity() {
     super.onStop()
   }
 
+  /**
+   * 应用沉浸式模式(隐藏系统栏)
+   */
   private fun applyImmersiveMode() {
     WindowCompat.setDecorFitsSystemWindows(window, false)
     val controller = WindowInsetsControllerCompat(window, window.decorView)
@@ -94,8 +109,12 @@ class MainActivity : ComponentActivity() {
     controller.hide(WindowInsetsCompat.Type.systemBars())
   }
 
+  /**
+   * 请求设备发现权限(根据Android版本)
+   */
   private fun requestDiscoveryPermissionsIfNeeded() {
     if (Build.VERSION.SDK_INT >= 33) {
+      // Android 13+: 请求NEARBY_WIFI_DEVICES权限
       val ok =
         ContextCompat.checkSelfPermission(
           this,
@@ -105,6 +124,7 @@ class MainActivity : ComponentActivity() {
         requestPermissions(arrayOf(Manifest.permission.NEARBY_WIFI_DEVICES), 100)
       }
     } else {
+      // Android 12及以下: 请求ACCESS_FINE_LOCATION权限
       val ok =
         ContextCompat.checkSelfPermission(
           this,
@@ -116,6 +136,9 @@ class MainActivity : ComponentActivity() {
     }
   }
 
+  /**
+   * 请求通知权限(Android 13+)
+   */
   private fun requestNotificationPermissionIfNeeded() {
     if (Build.VERSION.SDK_INT < 33) return
     val ok =

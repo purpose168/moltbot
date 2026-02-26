@@ -63,7 +63,7 @@ class ChatController(
 
   fun onDisconnected(message: String) {
     _healthOk.value = false
-    // Not an error; keep connection status in the UI pill.
+    // 不是错误;在UI药丸中保持连接状态
     _errorText.value = null
     clearPendingRuns()
     pendingToolCallsById.clear()
@@ -126,7 +126,7 @@ class ChatController(
     val sessionKey = _sessionKey.value
     val thinking = normalizeThinking(thinkingLevel)
 
-    // Optimistic user message.
+    // 乐观用户消息
     val userContent =
       buildList {
         add(ChatMessageContent(type = "text", text = text))
@@ -231,11 +231,11 @@ class ChatController(
         scope.launch { pollHealthIfNeeded(force = false) }
       }
       "health" -> {
-        // If we receive a health snapshot, the gateway is reachable.
+        // 如果我们收到健康快照,网关是可达的
         _healthOk.value = true
       }
       "seqGap" -> {
-        _errorText.value = "Event stream interrupted; try refreshing."
+        _errorText.value = "事件流中断;请尝试刷新。" // Event stream interrupted; try refreshing.
         clearPendingRuns()
       }
       "chat" -> {
@@ -264,7 +264,7 @@ class ChatController(
         try {
           session.sendNodeEvent("chat.subscribe", """{"sessionKey":"$key"}""")
         } catch (_: Throwable) {
-          // best-effort
+          // 尽力而为
         }
       }
 
@@ -389,7 +389,7 @@ class ChatController(
         }
       }
       "error" -> {
-        _errorText.value = "Event stream interrupted; try refreshing."
+        _errorText.value = "事件流中断;请尝试刷新。" // Event stream interrupted; try refreshing.
         clearPendingRuns()
         pendingToolCallsById.clear()
         publishPendingToolCalls()
@@ -414,7 +414,7 @@ class ChatController(
           }
         if (!stillPending) return@launch
         clearPendingRun(runId)
-        _errorText.value = "Timed out waiting for a reply; try again or refresh."
+        _errorText.value = "等待回复超时;请重试或刷新。" // Timed out waiting for a reply; try again or refresh.
       }
   }
 

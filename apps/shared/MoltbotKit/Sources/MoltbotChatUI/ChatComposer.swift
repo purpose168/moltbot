@@ -7,6 +7,7 @@ import PhotosUI
 import UniformTypeIdentifiers
 #endif
 
+/// Moltbot 聊天输入组件，包含文本编辑器、附件选择和会话管理功能
 @MainActor
 struct MoltbotChatComposer: View {
     @Bindable var viewModel: MoltbotChatViewModel
@@ -82,12 +83,13 @@ struct MoltbotChatComposer: View {
         #endif
     }
 
+    /// 思考级别选择器
     private var thinkingPicker: some View {
-        Picker("Thinking", selection: self.$viewModel.thinkingLevel) {
-            Text("Off").tag("off")
-            Text("Low").tag("low")
-            Text("Medium").tag("medium")
-            Text("High").tag("high")
+        Picker("思考级别", selection: self.$viewModel.thinkingLevel) {
+            Text("关闭").tag("off")
+            Text("低").tag("low")
+            Text("中").tag("medium")
+            Text("高").tag("high")
         }
         .labelsHidden()
         .pickerStyle(.menu)
@@ -95,9 +97,10 @@ struct MoltbotChatComposer: View {
         .frame(maxWidth: 140, alignment: .leading)
     }
 
+    /// 会话选择器
     private var sessionPicker: some View {
         Picker(
-            "Session",
+            "会话",
             selection: Binding(
                 get: { self.viewModel.sessionKey },
                 set: { next in self.viewModel.switchSession(to: next) }))
@@ -112,9 +115,10 @@ struct MoltbotChatComposer: View {
         .pickerStyle(.menu)
         .controlSize(.small)
         .frame(maxWidth: 160, alignment: .leading)
-        .help("Session")
+        .help("会话")
     }
 
+    /// 附件选择器
     @ViewBuilder
     private var attachmentPicker: some View {
         #if os(macOS)
@@ -123,14 +127,14 @@ struct MoltbotChatComposer: View {
         } label: {
             Image(systemName: "paperclip")
         }
-        .help("Add Image")
+        .help("添加图片")
         .buttonStyle(.bordered)
         .controlSize(.small)
         #else
         PhotosPicker(selection: self.$pickerItems, maxSelectionCount: 8, matching: .images) {
             Image(systemName: "paperclip")
         }
-        .help("Add Image")
+        .help("添加图片")
         .buttonStyle(.bordered)
         .controlSize(.small)
         .onChange(of: self.pickerItems) { _, newItems in
@@ -139,6 +143,7 @@ struct MoltbotChatComposer: View {
         #endif
     }
 
+    /// 附件显示条
     private var attachmentsStrip: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
@@ -176,6 +181,7 @@ struct MoltbotChatComposer: View {
         }
     }
 
+    /// 编辑器视图
     private var editor: some View {
         VStack(alignment: .leading, spacing: 8) {
             self.editorOverlay
@@ -204,6 +210,7 @@ struct MoltbotChatComposer: View {
         .padding(self.editorPadding)
     }
 
+    /// 连接状态指示器
     private var connectionPill: some View {
         HStack(spacing: 6) {
             Circle()
@@ -211,7 +218,7 @@ struct MoltbotChatComposer: View {
                 .frame(width: 7, height: 7)
             Text(self.activeSessionLabel)
                 .font(.caption2.weight(.semibold))
-            Text(self.viewModel.healthOK ? "Connected" : "Connecting…")
+            Text(self.viewModel.healthOK ? "已连接" : "连接中…")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -221,16 +228,18 @@ struct MoltbotChatComposer: View {
         .clipShape(Capsule())
     }
 
+    /// 获取当前活动会话的标签
     private var activeSessionLabel: String {
         let match = self.viewModel.sessions.first { $0.key == self.viewModel.sessionKey }
         let trimmed = match?.displayName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? self.viewModel.sessionKey : trimmed
     }
 
+    /// 编辑器覆盖层，包含占位符和文本输入区域
     private var editorOverlay: some View {
         ZStack(alignment: .topLeading) {
             if self.viewModel.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text("Message Clawd…")
+                Text("向 Clawd 发送消息…")
                     .foregroundStyle(.tertiary)
                     .padding(.horizontal, 4)
                     .padding(.vertical, 4)
@@ -258,6 +267,7 @@ struct MoltbotChatComposer: View {
         }
     }
 
+    /// 发送按钮
     private var sendButton: some View {
         Group {
             if self.viewModel.pendingRunCount > 0 {
@@ -296,6 +306,7 @@ struct MoltbotChatComposer: View {
         }
     }
 
+    /// 刷新按钮
     private var refreshButton: some View {
         Button {
             self.viewModel.refresh()
@@ -304,41 +315,49 @@ struct MoltbotChatComposer: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
-        .help("Refresh")
+        .help("刷新")
     }
 
+    /// 是否显示工具栏
     private var showsToolbar: Bool {
         self.style == .standard
     }
 
+    /// 是否显示附件
     private var showsAttachments: Bool {
         self.style == .standard
     }
 
+    /// 是否显示连接状态指示器
     private var showsConnectionPill: Bool {
         self.style == .standard
     }
 
+    /// 输入组件的内边距
     private var composerPadding: CGFloat {
         self.style == .onboarding ? 5 : 6
     }
 
+    /// 编辑器的内边距
     private var editorPadding: CGFloat {
         self.style == .onboarding ? 5 : 6
     }
 
+    /// 文本输入区域的最小高度
     private var textMinHeight: CGFloat {
         self.style == .onboarding ? 24 : 28
     }
 
+    /// 文本输入区域的最大高度
     private var textMaxHeight: CGFloat {
         self.style == .onboarding ? 52 : 64
     }
 
     #if os(macOS)
+    /// macOS 平台的文件选择器
     private func pickFilesMac() {
         let panel = NSOpenPanel()
-        panel.title = "Select image attachments"
+        panel.title = "选择图片附件"
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.allowedContentTypes = [.image]
@@ -348,6 +367,7 @@ struct MoltbotChatComposer: View {
         }
     }
 
+    /// 处理拖放文件
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
         let fileProviders = providers.filter { $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) }
         guard !fileProviders.isEmpty else { return false }
@@ -364,6 +384,7 @@ struct MoltbotChatComposer: View {
         return true
     }
     #else
+    /// 加载照片选择器中的项目
     private func loadPhotosPickerItems(_ items: [PhotosPickerItem]) async {
         for item in items {
             do {
@@ -386,6 +407,7 @@ struct MoltbotChatComposer: View {
 import AppKit
 import UniformTypeIdentifiers
 
+/// macOS 平台的文本视图封装
 private struct ChatComposerTextView: NSViewRepresentable {
     @Binding var text: String
     @Binding var shouldFocus: Bool
@@ -443,8 +465,8 @@ private struct ChatComposerTextView: NSViewRepresentable {
 
         let isEditing = scrollView.window?.firstResponder == textView
 
-        // Always allow clearing the text (e.g. after send), even while editing.
-        // Only skip other updates while editing to avoid cursor jumps.
+        // 始终允许清除文本（例如发送后），即使在编辑时也是如此。
+        // 仅在编辑时跳过其他更新以避免光标跳动。
         let shouldClear = self.text.isEmpty && !textView.string.isEmpty
         if isEditing, !shouldClear { return }
 
@@ -470,6 +492,7 @@ private struct ChatComposerTextView: NSViewRepresentable {
     }
 }
 
+/// 自定义 NSTextView，处理发送操作
 private final class ChatComposerNSTextView: NSTextView {
     var onSend: (() -> Void)?
 

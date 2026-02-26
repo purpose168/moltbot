@@ -14,14 +14,23 @@ import kotlinx.serialization.encodeToString
 import bot.molt.android.PermissionRequester
 
 /**
- * Sends SMS messages via the Android SMS API.
- * Requires SEND_SMS permission to be granted.
+ * 短信管理器
+ * 通过Android短信API发送短信消息
+ * 需要授予SEND_SMS权限
  */
 class SmsManager(private val context: Context) {
 
     private val json = JsonConfig
     @Volatile private var permissionRequester: PermissionRequester? = null
 
+    /**
+     * 发送结果数据类
+     * @param ok 是否成功
+     * @param to 接收方号码
+     * @param message 消息内容
+     * @param error 错误信息
+     * @param payloadJson 负载JSON字符串
+     */
     data class SendResult(
         val ok: Boolean,
         val to: String,
@@ -30,13 +39,31 @@ class SmsManager(private val context: Context) {
         val payloadJson: String,
     )
 
+    /**
+     * 解析参数数据类
+     * @param to 接收方号码
+     * @param message 消息内容
+     */
     internal data class ParsedParams(
         val to: String,
         val message: String,
     )
 
+    /**
+     * 解析结果密封类
+     */
     internal sealed class ParseResult {
+        /**
+         * 成功解析结果
+         * @param params 解析后的参数
+         */
         data class Ok(val params: ParsedParams) : ParseResult()
+        /**
+         * 解析错误结果
+         * @param error 错误信息
+         * @param to 接收方号码
+         * @param message 消息内容
+         */
         data class Error(
             val error: String,
             val to: String = "",
@@ -44,6 +71,11 @@ class SmsManager(private val context: Context) {
         ) : ParseResult()
     }
 
+    /**
+     * 发送计划数据类
+     * @param parts 消息部分列表
+     * @param useMultipart 是否使用多部分发送
+     */
     internal data class SendPlan(
         val parts: List<String>,
         val useMultipart: Boolean,
@@ -52,10 +84,16 @@ class SmsManager(private val context: Context) {
     companion object {
         internal val JsonConfig = Json { ignoreUnknownKeys = true }
 
+        /**
+         * 解析参数
+         * @param paramsJson 参数JSON字符串
+         * @param json JSON配置
+         * @return 解析结果
+         */
         internal fun parseParams(paramsJson: String?, json: Json = JsonConfig): ParseResult {
             val params = paramsJson?.trim().orEmpty()
             if (params.isEmpty()) {
-                return ParseResult.Error(error = "INVALID_REQUEST: paramsJSON required")
+                return ParseResult.Error(error = "INVALID_REQUEST: 需要paramsJSON")
             }
 
             val obj = try {
@@ -65,7 +103,7 @@ class SmsManager(private val context: Context) {
             }
 
             if (obj == null) {
-                return ParseResult.Error(error = "INVALID_REQUEST: expected JSON object")
+                return ParseResult.Error(error = "INVALID_REQUEST: 期望JSON对象")
             }
 
             val to = (obj["to"] as? JsonPrimitive)?.content?.trim().orEmpty()
@@ -73,14 +111,14 @@ class SmsManager(private val context: Context) {
 
             if (to.isEmpty()) {
                 return ParseResult.Error(
-                    error = "INVALID_REQUEST: 'to' phone number required",
+                    error = "INVALID_REQUEST: 需要接收方电话号码",
                     message = message,
                 )
             }
 
             if (message.isEmpty()) {
                 return ParseResult.Error(
-                    error = "INVALID_REQUEST: 'message' text required",
+                    error = "INVALID_REQUEST: 需要消息文本",
                     to = to,
                 )
             }
@@ -88,6 +126,12 @@ class SmsManager(private val context: Context) {
             return ParseResult.Ok(ParsedParams(to = to, message = message))
         }
 
+        /**
+         * 构建发送计划
+         * @param message 消息内容
+         * @param divider 分割函数
+         * @return 发送计划
+         */
         internal fun buildSendPlan(
             message: String,
             divider: (String) -> List<String>,
@@ -96,6 +140,14 @@ class SmsManager(private val context: Context) {
             return SendPlan(parts = parts, useMultipart = parts.size > 1)
         }
 
+        /**
+         * 构建负载JSON
+         * @param json JSON配置
+         * @param ok 是否成功
+         * @param to 接收方号码
+         * @param error 错误信息
+         * @return JSON字符串
+         */
         internal fun buildPayloadJson(
             json: Json = JsonConfig,
             ok: Boolean,
@@ -114,6 +166,9 @@ class SmsManager(private val context: Context) {
         }
     }
 
+    /**
+     * 检查是否有短信权限
+     */
     fun hasSmsPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             context,
@@ -121,34 +176,42 @@ class SmsManager(private val context: Context) {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
+    /**
+     * 检查是否可以发送短信
+     */
     fun canSendSms(): Boolean {
         return hasSmsPermission() && hasTelephonyFeature()
     }
 
+    /**
+     * 检查是否有电话功能
+     */
     fun hasTelephonyFeature(): Boolean {
         return context.packageManager?.hasSystemFeature(PackageManager.FEATURE_TELEPHONY) == true
     }
 
+    /**
+     * 附加权限请求器
+     */
     fun attachPermissionRequester(requester: PermissionRequester) {
         permissionRequester = requester
     }
 
     /**
-     * Send an SMS message.
-     *
-     * @param paramsJson JSON with "to" (phone number) and "message" (text) fields
-     * @return SendResult indicating success or failure
+     * 发送短信消息
+     * @param paramsJson 包含"to"(电话号码)和"message"(文本)字段的JSON
+     * @return 发送结果,指示成功或失败
      */
     suspend fun send(paramsJson: String?): SendResult {
         if (!hasTelephonyFeature()) {
             return errorResult(
-                error = "SMS_UNAVAILABLE: telephony not available",
+                error = "SMS_UNAVAILABLE: 电话功能不可用",
             )
         }
 
         if (!ensureSmsPermission()) {
             return errorResult(
-                error = "SMS_PERMISSION_REQUIRED: grant SMS permission",
+                error = "SMS_PERMISSION_REQUIRED: 请授予短信权限",
             )
         }
 
@@ -164,24 +227,26 @@ class SmsManager(private val context: Context) {
 
         return try {
             val smsManager = context.getSystemService(AndroidSmsManager::class.java)
-                ?: throw IllegalStateException("SMS_UNAVAILABLE: SmsManager not available")
+                ?: throw IllegalStateException("SMS_UNAVAILABLE: SmsManager不可用")
 
             val plan = buildSendPlan(params.message) { smsManager.divideMessage(it) }
             if (plan.useMultipart) {
+                // 发送多部分短信
                 smsManager.sendMultipartTextMessage(
-                    params.to,     // destination
-                    null,          // service center (null = default)
-                    ArrayList(plan.parts),    // message parts
-                    null,          // sent intents
-                    null,          // delivery intents
+                    params.to,     // 目标号码
+                    null,          // 短信中心(null=默认)
+                    ArrayList(plan.parts),    // 消息部分
+                    null,          // 发送意图
+                    null,          // 投递意图
                 )
             } else {
+                // 发送单条短信
                 smsManager.sendTextMessage(
-                    params.to,     // destination
-                    null,          // service center (null = default)
-                    params.message,// message
-                    null,          // sent intent
-                    null,          // delivery intent
+                    params.to,     // 目标号码
+                    null,          // 短信中心(null=默认)
+                    params.message,// 消息内容
+                    null,          // 发送意图
+                    null,          // 投递意图
                 )
             }
 
@@ -194,13 +259,16 @@ class SmsManager(private val context: Context) {
             )
         } catch (e: Throwable) {
             errorResult(
-                error = "SMS_SEND_FAILED: ${e.message ?: "unknown error"}",
+                error = "SMS_SEND_FAILED: ${e.message ?: "未知错误"}",
                 to = params.to,
                 message = params.message,
             )
         }
     }
 
+    /**
+     * 确保有短信权限
+     */
     private suspend fun ensureSmsPermission(): Boolean {
         if (hasSmsPermission()) return true
         val requester = permissionRequester ?: return false
@@ -208,6 +276,9 @@ class SmsManager(private val context: Context) {
         return results[Manifest.permission.SEND_SMS] == true
     }
 
+    /**
+     * 创建成功结果
+     */
     private fun okResult(to: String, message: String): SendResult {
         return SendResult(
             ok = true,
@@ -218,6 +289,9 @@ class SmsManager(private val context: Context) {
         )
     }
 
+    /**
+     * 创建错误结果
+     */
     private fun errorResult(error: String, to: String = "", message: String? = null): SendResult {
         return SendResult(
             ok = false,

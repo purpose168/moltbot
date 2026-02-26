@@ -2,31 +2,36 @@ import MoltbotKit
 import Foundation
 import SwiftUI
 
+// 聊天界面常量定义
 private enum ChatUIConstants {
-    static let bubbleMaxWidth: CGFloat = 560
-    static let bubbleCorner: CGFloat = 18
+    static let bubbleMaxWidth: CGFloat = 560  // 气泡最大宽度
+    static let bubbleCorner: CGFloat = 18      // 气泡圆角大小
 }
 
+// 聊天气泡形状定义
 private struct ChatBubbleShape: InsettableShape {
+    // 气泡尾部类型
     enum Tail {
-        case left
-        case right
-        case none
+        case left    // 左侧尾部
+        case right   // 右侧尾部
+        case none    // 无尾部
     }
 
-    let cornerRadius: CGFloat
-    let tail: Tail
-    var insetAmount: CGFloat = 0
+    let cornerRadius: CGFloat  // 圆角半径
+    let tail: Tail             // 尾部类型
+    var insetAmount: CGFloat = 0  // 内边距
 
-    private let tailWidth: CGFloat = 7
-    private let tailBaseHeight: CGFloat = 9
+    private let tailWidth: CGFloat = 7        // 尾部宽度
+    private let tailBaseHeight: CGFloat = 9   // 尾部基础高度
 
+    // 创建带内边距的气泡形状
     func inset(by amount: CGFloat) -> ChatBubbleShape {
         var copy = self
         copy.insetAmount += amount
         return copy
     }
 
+    // 生成气泡路径
     func path(in rect: CGRect) -> Path {
         let rect = rect.insetBy(dx: self.insetAmount, dy: self.insetAmount)
         switch self.tail {
@@ -39,6 +44,7 @@ private struct ChatBubbleShape: InsettableShape {
         }
     }
 
+    // 生成右侧尾部的路径
     private func rightTailPath(in rect: CGRect, radius r: CGFloat) -> Path {
         var path = Path()
         let bubbleMinX = rect.minX
@@ -85,6 +91,7 @@ private struct ChatBubbleShape: InsettableShape {
         return path
     }
 
+    // 生成左侧尾部的路径
     private func leftTailPath(in rect: CGRect, radius r: CGFloat) -> Path {
         var path = Path()
         let bubbleMinX = rect.minX + self.tailWidth
@@ -133,12 +140,13 @@ private struct ChatBubbleShape: InsettableShape {
     }
 }
 
+// 聊天消息气泡视图
 @MainActor
 struct ChatMessageBubble: View {
-    let message: MoltbotChatMessage
-    let style: MoltbotChatView.Style
-    let markdownVariant: ChatMarkdownVariant
-    let userAccent: Color?
+    let message: MoltbotChatMessage      // 消息数据
+    let style: MoltbotChatView.Style     // 聊天视图样式
+    let markdownVariant: ChatMarkdownVariant  // Markdown 渲染变体
+    let userAccent: Color?               // 用户强调色
 
     var body: some View {
         ChatMessageBody(
@@ -152,22 +160,25 @@ struct ChatMessageBubble: View {
             .padding(.horizontal, 2)
     }
 
+    // 判断是否为用户消息
     private var isUser: Bool { self.message.role.lowercased() == "user" }
 }
 
+// 聊天消息内容视图
 @MainActor
 private struct ChatMessageBody: View {
-    let message: MoltbotChatMessage
-    let isUser: Bool
-    let style: MoltbotChatView.Style
-    let markdownVariant: ChatMarkdownVariant
-    let userAccent: Color?
+    let message: MoltbotChatMessage      // 消息数据
+    let isUser: Bool                     // 是否为用户消息
+    let style: MoltbotChatView.Style     // 聊天视图样式
+    let markdownVariant: ChatMarkdownVariant  // Markdown 渲染变体
+    let userAccent: Color?               // 用户强调色
 
     var body: some View {
         let text = self.primaryText
         let textColor = self.isUser ? MoltbotChatTheme.userText : MoltbotChatTheme.assistantText
 
         VStack(alignment: .leading, spacing: 10) {
+            // 工具结果消息
             if self.isToolResultMessage {
                 if !text.isEmpty {
                     ToolResultCard(
@@ -176,6 +187,7 @@ private struct ChatMessageBody: View {
                         isUser: self.isUser)
                 }
             } else if self.isUser {
+                // 用户消息
                 ChatMarkdownRenderer(
                     text: text,
                     context: .user,
@@ -183,15 +195,18 @@ private struct ChatMessageBody: View {
                     font: .system(size: 14),
                     textColor: textColor)
             } else {
+                // 助手消息
                 ChatAssistantTextBody(text: text, markdownVariant: self.markdownVariant)
             }
 
+            // 内联附件
             if !self.inlineAttachments.isEmpty {
                 ForEach(self.inlineAttachments.indices, id: \.self) { idx in
                     AttachmentRow(att: self.inlineAttachments[idx], isUser: self.isUser)
                 }
             }
 
+            // 工具调用
             if !self.toolCalls.isEmpty {
                 ForEach(self.toolCalls.indices, id: \.self) { idx in
                     ToolCallCard(
@@ -200,6 +215,7 @@ private struct ChatMessageBody: View {
                 }
             }
 
+            // 内联工具结果
             if !self.inlineToolResults.isEmpty {
                 ForEach(self.inlineToolResults.indices, id: \.self) { idx in
                     let toolResult = self.inlineToolResults[idx]
@@ -223,6 +239,7 @@ private struct ChatMessageBody: View {
         .padding(.trailing, self.tailPaddingTrailing)
     }
 
+    // 获取主要文本内容
     private var primaryText: String {
         let parts = self.message.content.compactMap { content -> String? in
             let kind = (content.type ?? "text").lowercased()
@@ -232,6 +249,7 @@ private struct ChatMessageBody: View {
         return parts.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    // 获取内联附件
     private var inlineAttachments: [MoltbotChatMessageContent] {
         self.message.content.filter { content in
             switch content.type ?? "text" {
@@ -243,6 +261,7 @@ private struct ChatMessageBody: View {
         }
     }
 
+    // 获取工具调用
     private var toolCalls: [MoltbotChatMessageContent] {
         self.message.content.filter { content in
             let kind = (content.type ?? "").lowercased()
@@ -253,6 +272,7 @@ private struct ChatMessageBody: View {
         }
     }
 
+    // 获取内联工具结果
     private var inlineToolResults: [MoltbotChatMessageContent] {
         self.message.content.filter { content in
             let kind = (content.type ?? "").lowercased()
@@ -260,11 +280,13 @@ private struct ChatMessageBody: View {
         }
     }
 
+    // 判断是否为工具结果消息
     private var isToolResultMessage: Bool {
         let role = self.message.role.lowercased()
         return role == "toolresult" || role == "tool_result"
     }
 
+    // 获取工具结果标题
     private var toolResultTitle: String {
         if let name = self.message.toolName, !name.isEmpty {
             let display = ToolDisplayRegistry.resolve(name: name, args: nil)
@@ -274,6 +296,7 @@ private struct ChatMessageBody: View {
         return "\(display.emoji) \(display.title)"
     }
 
+    // 获取气泡填充颜色
     private var bubbleFillColor: Color {
         if self.isUser {
             return self.userAccent ?? MoltbotChatTheme.userBubble
@@ -284,10 +307,12 @@ private struct ChatMessageBody: View {
         return MoltbotChatTheme.assistantBubble
     }
 
+    // 获取气泡背景
     private var bubbleBackground: AnyShapeStyle {
         AnyShapeStyle(self.bubbleFillColor)
     }
 
+    // 获取气泡边框颜色
     private var bubbleBorderColor: Color {
         if self.isUser {
             return Color.white.opacity(0.12)
@@ -298,54 +323,64 @@ private struct ChatMessageBody: View {
         return Color.white.opacity(0.08)
     }
 
+    // 获取气泡边框宽度
     private var bubbleBorderWidth: CGFloat {
         if self.isUser { return 0.5 }
         if self.style == .onboarding { return 0.8 }
         return 1
     }
 
+    // 获取气泡边框
     private var bubbleBorder: some View {
         self.bubbleShape.strokeBorder(self.bubbleBorderColor, lineWidth: self.bubbleBorderWidth)
     }
 
+    // 获取气泡形状
     private var bubbleShape: ChatBubbleShape {
         ChatBubbleShape(cornerRadius: ChatUIConstants.bubbleCorner, tail: self.bubbleTail)
     }
 
+    // 获取气泡尾部类型
     private var bubbleTail: ChatBubbleShape.Tail {
         guard self.style == .onboarding else { return .none }
         return self.isUser ? .right : .left
     }
 
+    // 获取尾部左侧内边距
     private var tailPaddingLeading: CGFloat {
         self.style == .onboarding && !self.isUser ? 8 : 0
     }
 
+    // 获取尾部右侧内边距
     private var tailPaddingTrailing: CGFloat {
         self.style == .onboarding && self.isUser ? 8 : 0
     }
 
+    // 获取气泡阴影颜色
     private var bubbleShadowColor: Color {
         self.style == .onboarding && !self.isUser ? Color.black.opacity(0.28) : .clear
     }
 
+    // 获取气泡阴影半径
     private var bubbleShadowRadius: CGFloat {
         self.style == .onboarding && !self.isUser ? 6 : 0
     }
 
+    // 获取气泡阴影Y偏移
     private var bubbleShadowYOffset: CGFloat {
         self.style == .onboarding && !self.isUser ? 2 : 0
     }
 }
 
+// 附件行视图
 private struct AttachmentRow: View {
-    let att: MoltbotChatMessageContent
-    let isUser: Bool
+    let att: MoltbotChatMessageContent  // 附件内容
+    let isUser: Bool                     // 是否为用户消息
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "paperclip")
-            Text(self.att.fileName ?? "Attachment")
+            Image(systemName: "paperclip")  // 附件图标
+            Text(self.att.fileName ?? "Attachment")  // 附件文件名
                 .font(.footnote)
                 .lineLimit(1)
                 .foregroundStyle(self.isUser ? MoltbotChatTheme.userText : MoltbotChatTheme.assistantText)
@@ -357,9 +392,10 @@ private struct AttachmentRow: View {
     }
 }
 
+// 工具调用卡片视图
 private struct ToolCallCard: View {
-    let content: MoltbotChatMessageContent
-    let isUser: Bool
+    let content: MoltbotChatMessageContent  // 工具调用内容
+    let isUser: Bool                         // 是否为用户消息
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -385,24 +421,28 @@ private struct ToolCallCard: View {
                         .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)))
     }
 
+    // 获取工具名称
     private var toolName: String {
         "\(self.display.emoji) \(self.display.title)"
     }
 
+    // 获取工具摘要
     private var summary: String? {
         self.display.detailLine
     }
 
+    // 获取工具显示信息
     private var display: ToolDisplaySummary {
         ToolDisplayRegistry.resolve(name: self.content.name ?? "tool", args: self.content.arguments)
     }
 }
 
+// 工具结果卡片视图
 private struct ToolResultCard: View {
-    let title: String
-    let text: String
-    let isUser: Bool
-    @State private var expanded = false
+    let title: String  // 工具结果标题
+    let text: String   // 工具结果文本
+    let isUser: Bool   // 是否为用户消息
+    @State private var expanded = false  // 是否展开
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -417,8 +457,9 @@ private struct ToolResultCard: View {
                 .foregroundStyle(self.isUser ? MoltbotChatTheme.userText : MoltbotChatTheme.assistantText)
                 .lineLimit(self.expanded ? nil : Self.previewLineLimit)
 
+            // 展开/收起按钮
             if self.shouldShowToggle {
-                Button(self.expanded ? "Show less" : "Show full output") {
+                Button(self.expanded ? "显示更少" : "显示完整输出") {
                     self.expanded.toggle()
                 }
                 .buttonStyle(.plain)
@@ -435,31 +476,35 @@ private struct ToolResultCard: View {
                         .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)))
     }
 
-    private static let previewLineLimit = 8
+    private static let previewLineLimit = 8  // 预览行数限制
 
+    // 获取文本行数
     private var lines: [Substring] {
         self.text.components(separatedBy: .newlines).map { Substring($0) }
     }
 
+    // 获取显示文本
     private var displayText: String {
         guard !self.expanded, self.lines.count > Self.previewLineLimit else { return self.text }
         return self.lines.prefix(Self.previewLineLimit).joined(separator: "\n") + "\n…"
     }
 
+    // 判断是否显示展开/收起按钮
     private var shouldShowToggle: Bool {
         self.lines.count > Self.previewLineLimit
     }
 }
 
+// 输入指示器气泡视图
 @MainActor
 struct ChatTypingIndicatorBubble: View {
-    let style: MoltbotChatView.Style
+    let style: MoltbotChatView.Style  // 聊天视图样式
 
     var body: some View {
         HStack(spacing: 10) {
-            TypingDots()
+            TypingDots()  // 输入点动画
             if self.style == .standard {
-                Text("Clawd is thinking…")
+                Text("Clawd 正在思考…")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -478,16 +523,19 @@ struct ChatTypingIndicatorBubble: View {
     }
 }
 
-extension ChatTypingIndicatorBubble: @MainActor Equatable {
+// 输入指示器气泡视图的Equatable实现
+@MainActor
+extension ChatTypingIndicatorBubble: Equatable {
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.style == rhs.style
     }
 }
 
+// 流式助手气泡视图
 @MainActor
 struct ChatStreamingAssistantBubble: View {
-    let text: String
-    let markdownVariant: ChatMarkdownVariant
+    let text: String                     // 助手文本
+    let markdownVariant: ChatMarkdownVariant  // Markdown 渲染变体
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -505,13 +553,14 @@ struct ChatStreamingAssistantBubble: View {
     }
 }
 
+// 待处理工具气泡视图
 @MainActor
 struct ChatPendingToolsBubble: View {
-    let toolCalls: [MoltbotChatPendingToolCall]
+    let toolCalls: [MoltbotChatPendingToolCall]  // 待处理工具调用
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Running tools…", systemImage: "hammer")
+            Label("正在运行工具…", systemImage: "hammer")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -523,7 +572,7 @@ struct ChatPendingToolsBubble: View {
                             .font(.footnote.monospaced())
                             .lineLimit(1)
                         Spacer(minLength: 0)
-                        ProgressView().controlSize(.mini)
+                        ProgressView().controlSize(.mini)  // 进度指示器
                     }
                     if let detail = display.detailLine, !detail.isEmpty {
                         Text(detail)
@@ -549,17 +598,20 @@ struct ChatPendingToolsBubble: View {
     }
 }
 
-extension ChatPendingToolsBubble: @MainActor Equatable {
+// 待处理工具气泡视图的Equatable实现
+@MainActor
+extension ChatPendingToolsBubble: Equatable {
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.toolCalls == rhs.toolCalls
     }
 }
 
+// 输入点动画视图
 @MainActor
 private struct TypingDots: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var animate = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion  // 无障碍减少动画
+    @Environment(\.scenePhase) private var scenePhase                    // 场景阶段
+    @State private var animate = false                                   // 是否动画
 
     var body: some View {
         HStack(spacing: 5) {
@@ -586,6 +638,7 @@ private struct TypingDots: View {
         }
     }
 
+    // 更新动画状态
     private func updateAnimationState() {
         guard !self.reduceMotion, self.scenePhase == .active else {
             self.animate = false
@@ -595,12 +648,13 @@ private struct TypingDots: View {
     }
 }
 
+// 助手文本内容视图
 private struct ChatAssistantTextBody: View {
-    let text: String
-    let markdownVariant: ChatMarkdownVariant
+    let text: String                     // 文本内容
+    let markdownVariant: ChatMarkdownVariant  // Markdown 渲染变体
 
     var body: some View {
-        let segments = AssistantTextParser.segments(from: self.text)
+        let segments = AssistantTextParser.segments(from: self.text)  // 解析文本段
         VStack(alignment: .leading, spacing: 10) {
             ForEach(segments) { segment in
                 let font = segment.kind == .thinking ? Font.system(size: 14).italic() : Font.system(size: 14)

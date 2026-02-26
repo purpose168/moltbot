@@ -1,25 +1,41 @@
 import Foundation
 
+/// 命令解析器，负责解析和构建 moltbot 相关的命令
 enum CommandResolver {
     private static let projectRootDefaultsKey = "moltbot.gatewayProjectRootPath"
     private static let helperName = "moltbot"
 
+    /// 查找网关入口点
+    /// - Parameter root: 项目根目录 URL
+    /// - Returns: 入口点路径，如果找不到则返回 nil
     static func gatewayEntrypoint(in root: URL) -> String? {
         let distEntry = root.appendingPathComponent("dist/index.js").path
-        if FileManager().isReadableFile(atPath: distEntry) { return distEntry }
+        if FileManager().isReadableFile(atPath: distEntry) { return distEntry }  // 检查 dist/index.js 是否存在
         let binEntry = root.appendingPathComponent("bin/moltbot.js").path
-        if FileManager().isReadableFile(atPath: binEntry) { return binEntry }
+        if FileManager().isReadableFile(atPath: binEntry) { return binEntry }  // 检查 bin/moltbot.js 是否存在
         return nil
     }
 
+    /// 解析运行时环境
+    /// - Returns: 运行时解析结果
     static func runtimeResolution() -> Result<RuntimeResolution, RuntimeResolutionError> {
         RuntimeLocator.resolve(searchPaths: self.preferredPaths())
     }
 
+    /// 解析运行时环境（带搜索路径）
+    /// - Parameter searchPaths: 自定义搜索路径
+    /// - Returns: 运行时解析结果
     static func runtimeResolution(searchPaths: [String]?) -> Result<RuntimeResolution, RuntimeResolutionError> {
         RuntimeLocator.resolve(searchPaths: searchPaths ?? self.preferredPaths())
     }
 
+    /// 构建运行时命令
+    /// - Parameters:
+    ///   - runtime: 运行时环境
+    ///   - entrypoint: 入口点路径
+    ///   - subcommand: 子命令
+    ///   - extraArgs: 额外参数
+    /// - Returns: 命令数组
     static func makeRuntimeCommand(
         runtime: RuntimeResolution,
         entrypoint: String,
@@ -29,11 +45,17 @@ enum CommandResolver {
         [runtime.path, entrypoint, subcommand] + extraArgs
     }
 
+    /// 构建运行时错误命令
+    /// - Parameter error: 运行时解析错误
+    /// - Returns: 错误命令数组
     static func runtimeErrorCommand(_ error: RuntimeResolutionError) -> [String] {
         let message = RuntimeLocator.describeFailure(error)
         return self.errorCommand(with: message)
     }
 
+    /// 构建错误命令
+    /// - Parameter message: 错误信息
+    /// - Returns: 错误命令数组
     static func errorCommand(with message: String) -> [String] {
         let script = """
         cat <<'__CLAWDBOT_ERR__' >&2
@@ -41,32 +63,40 @@ enum CommandResolver {
         __CLAWDBOT_ERR__
         exit 1
         """
-        return ["/bin/sh", "-c", script]
+        return ["/bin/sh", "-c", script]  // 执行 shell 脚本输出错误信息
     }
 
+    /// 获取项目根目录
+    /// - Returns: 项目根目录 URL
     static func projectRoot() -> URL {
         if let stored = UserDefaults.standard.string(forKey: self.projectRootDefaultsKey),
            let url = self.expandPath(stored),
            FileManager().fileExists(atPath: url.path)
         {
-            return url
+            return url  // 使用存储的项目根目录
         }
         let fallback = FileManager().homeDirectoryForCurrentUser
             .appendingPathComponent("Projects/moltbot")
         if FileManager().fileExists(atPath: fallback.path) {
-            return fallback
+            return fallback  // 使用默认的项目根目录
         }
-        return FileManager().homeDirectoryForCurrentUser
+        return FileManager().homeDirectoryForCurrentUser  // 回退到用户主目录
     }
 
+    /// 设置项目根目录
+    /// - Parameter path: 项目根目录路径
     static func setProjectRoot(_ path: String) {
         UserDefaults.standard.set(path, forKey: self.projectRootDefaultsKey)
     }
 
+    /// 获取项目根目录路径
+    /// - Returns: 项目根目录路径字符串
     static func projectRootPath() -> String {
         self.projectRoot().path
     }
 
+    /// 获取首选搜索路径
+    /// - Returns: 搜索路径数组
     static func preferredPaths() -> [String] {
         let current = ProcessInfo.processInfo.environment["PATH"]?
             .split(separator: ":").map(String.init) ?? []
@@ -75,6 +105,12 @@ enum CommandResolver {
         return self.preferredPaths(home: home, current: current, projectRoot: projectRoot)
     }
 
+    /// 获取首选搜索路径（带参数）
+    /// - Parameters:
+    ///   - home: 用户主目录
+    ///   - current: 当前 PATH 环境变量中的路径
+    ///   - projectRoot: 项目根目录
+    /// - Returns: 搜索路径数组
     static func preferredPaths(home: URL, current: [String], projectRoot: URL) -> [String] {
         var extras = [
             home.appendingPathComponent("Library/pnpm").path,
@@ -84,7 +120,7 @@ enum CommandResolver {
             "/bin",
         ]
         #if DEBUG
-        // Dev-only convenience. Avoid project-local PATH hijacking in release builds.
+        // 开发模式下的便捷设置，避免在发布版本中被项目本地 PATH 劫持
         extras.insert(projectRoot.appendingPathComponent("node_modules/.bin").path, at: 0)
         #endif
         let moltbotPaths = self.moltbotManagedPaths(home: home)
@@ -93,10 +129,13 @@ enum CommandResolver {
         }
         extras.insert(contentsOf: self.nodeManagerBinPaths(home: home), at: 1 + moltbotPaths.count)
         var seen = Set<String>()
-        // Preserve order while stripping duplicates so PATH lookups remain deterministic.
+        // 保持顺序同时去除重复项，确保 PATH 查找保持确定性
         return (extras + current).filter { seen.insert($0).inserted }
     }
 
+    /// 获取 moltbot 管理的路径
+    /// - Parameter home: 用户主目录
+    /// - Returns: 路径数组
     private static func moltbotManagedPaths(home: URL) -> [String] {
         let base = home.appendingPathComponent(".clawdbot")
         let bin = base.appendingPathComponent("bin")
@@ -111,6 +150,9 @@ enum CommandResolver {
         return paths
     }
 
+    /// 获取 Node 版本管理器的二进制路径
+    /// - Parameter home: 用户主目录
+    /// - Returns: 路径数组
     private static func nodeManagerBinPaths(home: URL) -> [String] {
         var bins: [String] = []
 
@@ -139,6 +181,11 @@ enum CommandResolver {
         return bins
     }
 
+    /// 获取版本化的 Node 二进制路径
+    /// - Parameters:
+    ///   - base: 基础目录
+    ///   - suffix: 路径后缀
+    /// - Returns: 路径数组
     private static func versionedNodeBinPaths(base: URL, suffix: String) -> [String] {
         guard FileManager().fileExists(atPath: base.path) else { return [] }
         let entries: [String]
@@ -148,11 +195,13 @@ enum CommandResolver {
             return []
         }
 
+        /// 解析版本号
         func parseVersion(_ name: String) -> [Int] {
             let trimmed = name.hasPrefix("v") ? String(name.dropFirst()) : name
             return trimmed.split(separator: ".").compactMap { Int($0) }
         }
 
+        // 按版本号降序排序
         let sorted = entries.sorted { a, b in
             let va = parseVersion(a)
             let vb = parseVersion(b)
@@ -162,7 +211,7 @@ enum CommandResolver {
                 let bi = i < vb.count ? vb[i] : 0
                 if ai != bi { return ai > bi }
             }
-            // If identical numerically, keep stable ordering.
+            // 如果版本号数值相同，保持稳定排序
             return a > b
         }
 
@@ -177,6 +226,11 @@ enum CommandResolver {
         return paths
     }
 
+    /// 查找可执行文件
+    /// - Parameters:
+    ///   - name: 可执行文件名
+    ///   - searchPaths: 搜索路径
+    /// - Returns: 可执行文件路径，如果找不到则返回 nil
     static func findExecutable(named name: String, searchPaths: [String]? = nil) -> String? {
         for dir in searchPaths ?? self.preferredPaths() {
             let candidate = (dir as NSString).appendingPathComponent(name)
@@ -187,10 +241,16 @@ enum CommandResolver {
         return nil
     }
 
+    /// 查找 moltbot 可执行文件
+    /// - Parameter searchPaths: 搜索路径
+    /// - Returns: moltbot 可执行文件路径，如果找不到则返回 nil
     static func moltbotExecutable(searchPaths: [String]? = nil) -> String? {
         self.findExecutable(named: self.helperName, searchPaths: searchPaths)
     }
 
+    /// 查找项目本地的 moltbot 可执行文件
+    /// - Parameter projectRoot: 项目根目录
+    /// - Returns: moltbot 可执行文件路径，如果找不到则返回 nil
     static func projectMoltbotExecutable(projectRoot: URL? = nil) -> String? {
         #if DEBUG
         let root = projectRoot ?? self.projectRoot()
@@ -201,11 +261,16 @@ enum CommandResolver {
         #endif
     }
 
+    /// 获取 Node CLI 路径
+    /// - Returns: Node CLI 路径，如果找不到则返回 nil
     static func nodeCliPath() -> String? {
         let candidate = self.projectRoot().appendingPathComponent("bin/moltbot.js").path
         return FileManager().isReadableFile(atPath: candidate) ? candidate : nil
     }
 
+    /// 检查是否有任何 moltbot 调用器
+    /// - Parameter searchPaths: 搜索路径
+    /// - Returns: 是否存在 moltbot 调用器
     static func hasAnyMoltbotInvoker(searchPaths: [String]? = nil) -> Bool {
         if self.moltbotExecutable(searchPaths: searchPaths) != nil { return true }
         if self.findExecutable(named: "pnpm", searchPaths: searchPaths) != nil { return true }
@@ -217,6 +282,14 @@ enum CommandResolver {
         return false
     }
 
+    /// 构建 moltbot Node 命令
+    /// - Parameters:
+    ///   - subcommand: 子命令
+    ///   - extraArgs: 额外参数
+    ///   - defaults: 用户默认设置
+    ///   - configRoot: 配置根目录
+    ///   - searchPaths: 搜索路径
+    /// - Returns: 命令数组
     static func moltbotNodeCommand(
         subcommand: String,
         extraArgs: [String] = [],
@@ -250,7 +323,7 @@ enum CommandResolver {
                     extraArgs: extraArgs)
             }
             if let pnpm = self.findExecutable(named: "pnpm", searchPaths: searchPaths) {
-                // Use --silent to avoid pnpm lifecycle banners that would corrupt JSON outputs.
+                // 使用 --silent 避免 pnpm 生命周期横幅干扰 JSON 输出
                 return [pnpm, "--silent", "moltbot", subcommand] + extraArgs
             }
             if let moltbotPath = self.moltbotExecutable(searchPaths: searchPaths) {
@@ -258,7 +331,7 @@ enum CommandResolver {
             }
 
             let missingEntry = """
-            moltbot entrypoint missing (looked for dist/index.js or bin/moltbot.js); run pnpm build.
+moltbot 入口点缺失（查找了 dist/index.js 或 bin/moltbot.js）；请运行 pnpm build。
             """
             return self.errorCommand(with: missingEntry)
 
@@ -267,7 +340,15 @@ enum CommandResolver {
         }
     }
 
-    // Existing callers still refer to moltbotCommand; keep it as node alias.
+    // 现有调用者仍引用 moltbotCommand；保持作为 node 别名
+    /// 构建 moltbot 命令（与 moltbotNodeCommand 相同）
+    /// - Parameters:
+    ///   - subcommand: 子命令
+    ///   - extraArgs: 额外参数
+    ///   - defaults: 用户默认设置
+    ///   - configRoot: 配置根目录
+    ///   - searchPaths: 搜索路径
+    /// - Returns: 命令数组
     static func moltbotCommand(
         subcommand: String,
         extraArgs: [String] = [],
@@ -283,13 +364,19 @@ enum CommandResolver {
             searchPaths: searchPaths)
     }
 
-    // MARK: - SSH helpers
+    // MARK: - SSH 辅助方法
 
+    /// 构建 SSH Node 命令
+    /// - Parameters:
+    ///   - subcommand: 子命令
+    ///   - extraArgs: 额外参数
+    ///   - settings: 远程设置
+    /// - Returns: SSH 命令数组
     private static func sshNodeCommand(subcommand: String, extraArgs: [String], settings: RemoteSettings) -> [String]? {
         guard !settings.target.isEmpty else { return nil }
         guard let parsed = self.parseSSHTarget(settings.target) else { return nil }
 
-        // Run the real moltbot CLI on the remote host.
+        // 在远程主机上运行真正的 moltbot CLI
         let exportedPath = [
             "/opt/homebrew/bin",
             "/usr/local/bin",
@@ -382,6 +469,7 @@ enum CommandResolver {
         return ["/usr/bin/ssh"] + args
     }
 
+    /// 远程设置结构体
     struct RemoteSettings {
         let mode: AppState.ConnectionMode
         let target: String
@@ -390,6 +478,11 @@ enum CommandResolver {
         let cliPath: String
     }
 
+    /// 获取连接设置
+    /// - Parameters:
+    ///   - defaults: 用户默认设置
+    ///   - configRoot: 配置根目录
+    /// - Returns: 远程设置
     static func connectionSettings(
         defaults: UserDefaults = .standard,
         configRoot: [String: Any]? = nil) -> RemoteSettings
@@ -408,10 +501,16 @@ enum CommandResolver {
             cliPath: cliPath)
     }
 
+    /// 检查连接模式是否为远程
+    /// - Parameter defaults: 用户默认设置
+    /// - Returns: 是否为远程模式
     static func connectionModeIsRemote(defaults: UserDefaults = .standard) -> Bool {
         self.connectionSettings(defaults: defaults).mode == .remote
     }
 
+    /// 清理 SSH 目标字符串
+    /// - Parameter raw: 原始目标字符串
+    /// - Returns: 清理后的目标字符串
     private static func sanitizedTarget(_ raw: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.hasPrefix("ssh ") {
@@ -420,12 +519,16 @@ enum CommandResolver {
         return trimmed
     }
 
+    /// SSH 解析目标结构体
     struct SSHParsedTarget {
         let user: String?
         let host: String
         let port: Int
     }
 
+    /// 解析 SSH 目标
+    /// - Parameter target: 目标字符串
+    /// - Returns: 解析后的 SSH 目标，如果解析失败则返回 nil
     static func parseSSHTarget(_ target: String) -> SSHParsedTarget? {
         let trimmed = self.normalizeSSHTargetInput(target)
         guard !trimmed.isEmpty else { return nil }
@@ -459,27 +562,36 @@ enum CommandResolver {
         return self.makeSSHTarget(user: user, host: host, port: port)
     }
 
+    /// 获取 SSH 目标验证消息
+    /// - Parameter target: 目标字符串
+    /// - Returns: 验证错误消息，如果验证通过则返回 nil
     static func sshTargetValidationMessage(_ target: String) -> String? {
         let trimmed = self.normalizeSSHTargetInput(target)
         guard !trimmed.isEmpty else { return nil }
         if trimmed.hasPrefix("-") {
-            return "SSH target cannot start with '-'"
+            return "SSH 目标不能以 '-' 开头"
         }
         if trimmed.rangeOfCharacter(from: CharacterSet.whitespacesAndNewlines.union(.controlCharacters)) != nil {
-            return "SSH target cannot contain spaces"
+            return "SSH 目标不能包含空格"
         }
         if self.parseSSHTarget(trimmed) == nil {
-            return "SSH target must look like user@host[:port]"
+            return "SSH 目标必须形如 user@host[:port]"
         }
         return nil
     }
 
+    /// 对字符串进行 shell 引用
+    /// - Parameter text: 原始文本
+    /// - Returns: 引用后的文本
     private static func shellQuote(_ text: String) -> String {
         if text.isEmpty { return "''" }
         let escaped = text.replacingOccurrences(of: "'", with: "'\\''")
         return "'\(escaped)'"
     }
 
+    /// 展开路径
+    /// - Parameter path: 原始路径
+    /// - Returns: 展开后的 URL，如果展开失败则返回 nil
     private static func expandPath(_ path: String) -> URL? {
         var expanded = path
         if expanded.hasPrefix("~") {
@@ -489,6 +601,9 @@ enum CommandResolver {
         return URL(fileURLWithPath: expanded)
     }
 
+    /// 标准化 SSH 目标输入
+    /// - Parameter target: 原始目标字符串
+    /// - Returns: 标准化后的目标字符串
     private static func normalizeSSHTargetInput(_ target: String) -> String {
         var trimmed = target.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.hasPrefix("ssh ") {
@@ -498,6 +613,11 @@ enum CommandResolver {
         return trimmed
     }
 
+    /// 验证 SSH 组件是否有效
+    /// - Parameters:
+    ///   - value: 组件值
+    ///   - allowLeadingDash: 是否允许以 '-' 开头
+    /// - Returns: 是否有效
     private static func isValidSSHComponent(_ value: String, allowLeadingDash: Bool = false) -> Bool {
         if value.isEmpty { return false }
         if !allowLeadingDash, value.hasPrefix("-") { return false }
@@ -505,6 +625,12 @@ enum CommandResolver {
         return value.rangeOfCharacter(from: invalid) == nil
     }
 
+    /// 构建 SSH 目标
+    /// - Parameters:
+    ///   - user: 用户名
+    ///   - host: 主机名
+    ///   - port: 端口号
+    /// - Returns: SSH 目标，如果构建失败则返回 nil
     static func makeSSHTarget(user: String?, host: String, port: Int) -> SSHParsedTarget? {
         let trimmedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
         guard self.isValidSSHComponent(trimmedHost) else { return nil }
@@ -520,10 +646,20 @@ enum CommandResolver {
         return SSHParsedTarget(user: normalizedUser, host: trimmedHost, port: port)
     }
 
+    /// 获取 SSH 目标字符串
+    /// - Parameter target: SSH 目标
+    /// - Returns: 目标字符串
     private static func sshTargetString(_ target: SSHParsedTarget) -> String {
         target.user.map { "\($0)@\(target.host)" } ?? target.host
     }
 
+    /// 构建 SSH 参数
+    /// - Parameters:
+    ///   - target: SSH 目标
+    ///   - identity: 身份文件路径
+    ///   - options: SSH 选项
+    ///   - remoteCommand: 远程命令
+    /// - Returns: SSH 参数数组
     static func sshArguments(
         target: SSHParsedTarget,
         identity: String,
@@ -536,8 +672,8 @@ enum CommandResolver {
         }
         let trimmedIdentity = identity.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedIdentity.isEmpty {
-            // Only use IdentitiesOnly when an explicit identity file is provided.
-            // This allows 1Password SSH agent and other SSH agents to provide keys.
+            // 仅当提供了显式身份文件时使用 IdentitiesOnly
+            // 这允许 1Password SSH agent 和其他 SSH agent 提供密钥
             args.append(contentsOf: ["-o", "IdentitiesOnly=yes"])
             args.append(contentsOf: ["-i", trimmedIdentity])
         }
@@ -548,6 +684,9 @@ enum CommandResolver {
     }
 
     #if SWIFT_PACKAGE
+    /// 测试方法：获取 Node 版本管理器的二进制路径
+    /// - Parameter home: 用户主目录
+    /// - Returns: 路径数组
     static func _testNodeManagerBinPaths(home: URL) -> [String] {
         self.nodeManagerBinPaths(home: home)
     }

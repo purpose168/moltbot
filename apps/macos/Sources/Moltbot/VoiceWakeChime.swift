@@ -2,11 +2,13 @@ import AppKit
 import Foundation
 import OSLog
 
+/// 语音唤醒提示音类型
 enum VoiceWakeChime: Codable, Equatable, Sendable {
     case none
     case system(name: String)
     case custom(displayName: String, bookmark: Data)
 
+    /// 系统提示音名称
     var systemName: String? {
         if case let .system(name) = self {
             return name
@@ -14,10 +16,11 @@ enum VoiceWakeChime: Codable, Equatable, Sendable {
         return nil
     }
 
+    /// 显示标签
     var displayLabel: String {
         switch self {
         case .none:
-            "No Sound"
+            "无声音"
         case let .system(name):
             VoiceWakeChimeCatalog.displayName(for: name)
         case let .custom(displayName, _):
@@ -26,24 +29,32 @@ enum VoiceWakeChime: Codable, Equatable, Sendable {
     }
 }
 
+/// 语音唤醒提示音目录
 enum VoiceWakeChimeCatalog {
-    /// Options shown in the picker.
+    /// 选择器中显示的选项
     static var systemOptions: [String] { SoundEffectCatalog.systemOptions }
 
+    /// 获取显示名称
     static func displayName(for raw: String) -> String {
         SoundEffectCatalog.displayName(for: raw)
     }
 
+    /// 获取URL
     static func url(for name: String) -> URL? {
         SoundEffectCatalog.url(for: name)
     }
 }
 
+/// 语音唤醒提示音播放器
 @MainActor
 enum VoiceWakeChimePlayer {
     private static let logger = Logger(subsystem: "bot.molt", category: "voicewake.chime")
     private static var lastSound: NSSound?
 
+    /// 播放提示音
+    /// - Parameters:
+    ///   - chime: 提示音类型
+    ///   - reason: 播放原因
     static func play(_ chime: VoiceWakeChime, reason: String? = nil) {
         guard let sound = self.sound(for: chime) else { return }
         if let reason {
@@ -59,6 +70,7 @@ enum VoiceWakeChimePlayer {
         SoundEffectPlayer.play(sound)
     }
 
+    /// 获取提示音
     private static func sound(for chime: VoiceWakeChime) -> NSSound? {
         switch chime {
         case .none:

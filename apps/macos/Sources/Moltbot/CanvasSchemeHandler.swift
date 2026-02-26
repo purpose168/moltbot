@@ -5,17 +5,24 @@ import WebKit
 
 private let canvasLogger = Logger(subsystem: "bot.molt", category: "Canvas")
 
+/// Canvas 自定义 URL 方案处理器，用于处理 WebView 中的 Canvas 相关请求
 final class CanvasSchemeHandler: NSObject, WKURLSchemeHandler {
     private let root: URL
 
+    /// 初始化 CanvasSchemeHandler
+    /// - Parameter root: 根目录 URL
     init(root: URL) {
         self.root = root
     }
 
+    /// 处理 WebView 的 URL 方案任务
+    /// - Parameters:
+    ///   - webView: WebView 实例（未使用）
+    ///   - urlSchemeTask: URL 方案任务
     func webView(_: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
         guard let url = urlSchemeTask.request.url else {
             urlSchemeTask.didFailWithError(NSError(domain: "Canvas", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "missing url",
+                NSLocalizedDescriptionKey: "缺少 URL",
             ]))
             return
         }
@@ -35,37 +42,45 @@ final class CanvasSchemeHandler: NSObject, WKURLSchemeHandler {
         urlSchemeTask.didFinish()
     }
 
+    /// 停止 URL 方案任务（无操作）
+    /// - Parameters:
+    ///   - webView: WebView 实例（未使用）
+    ///   - urlSchemeTask: URL 方案任务（未使用）
     func webView(_: WKWebView, stop _: WKURLSchemeTask) {
-        // no-op
+        // 无操作
     }
 
+    /// Canvas 响应结构体
     private struct CanvasResponse {
-        let mime: String
-        let data: Data
+        let mime: String  // MIME 类型
+        let data: Data    // 响应数据
     }
 
+    /// 根据 URL 生成响应
+    /// - Parameter url: 请求 URL
+    /// - Returns: CanvasResponse 实例
     private func response(for url: URL) -> CanvasResponse {
         guard url.scheme == CanvasScheme.scheme else {
-            return self.html("Invalid scheme.")
+            return self.html("无效的方案。")
         }
         guard let session = url.host, !session.isEmpty else {
-            return self.html("Missing session.")
+            return self.html("缺少会话。")
         }
 
-        // Keep session component safe; don't allow slashes or traversal.
+        // 保持会话组件安全；不允许斜杠或路径遍历
         if session.contains("/") || session.contains("..") {
-            return self.html("Invalid session.")
+            return self.html("无效的会话。")
         }
 
         let sessionRoot = self.root.appendingPathComponent(session, isDirectory: true)
 
-        // Path mapping: request path maps directly into the session dir.
+        // 路径映射：请求路径直接映射到会话目录
         var path = url.path
         if let qIdx = path.firstIndex(of: "?") { path = String(path[..<qIdx]) }
         if path.hasPrefix("/") { path.removeFirst() }
         path = path.removingPercentEncoding ?? path
 
-        // Special-case: welcome page when root index is missing.
+        // 特殊情况：当根索引缺失时显示欢迎页面
         if path.isEmpty {
             let indexA = sessionRoot.appendingPathComponent("index.html", isDirectory: false)
             let indexB = sessionRoot.appendingPathComponent("index.htm", isDirectory: false)
@@ -78,14 +93,14 @@ final class CanvasSchemeHandler: NSObject, WKURLSchemeHandler {
 
         let resolved = self.resolveFileURL(sessionRoot: sessionRoot, requestPath: path)
         guard let fileURL = resolved else {
-            return self.html("Not Found", title: "Canvas: 404")
+            return self.html("未找到", title: "Canvas: 404")
         }
 
-        // Directory traversal guard: served files must live under the session root.
+        // 目录遍历防护：提供的文件必须位于会话根目录下
         let standardizedRoot = sessionRoot.standardizedFileURL
         let standardizedFile = fileURL.standardizedFileURL
         guard standardizedFile.path.hasPrefix(standardizedRoot.path) else {
-            return self.html("Forbidden", title: "Canvas: 403")
+            return self.html("禁止访问", title: "Canvas: 403")
         }
 
         do {
@@ -93,18 +108,23 @@ final class CanvasSchemeHandler: NSObject, WKURLSchemeHandler {
             let mime = CanvasScheme.mimeType(forExtension: standardizedFile.pathExtension)
             let servedPath = standardizedFile.path
             canvasLogger.debug(
-                "served \(session, privacy: .public)/\(path, privacy: .public) -> \(servedPath, privacy: .public)")
+                "已提供 \(session, privacy: .public)/\(path, privacy: .public) -> \(servedPath, privacy: .public)")
             return CanvasResponse(mime: mime, data: data)
         } catch {
             let failedPath = standardizedFile.path
             let errorText = error.localizedDescription
             canvasLogger
                 .error(
-                    "failed reading \(failedPath, privacy: .public): \(errorText, privacy: .public)")
-            return self.html("Failed to read file.", title: "Canvas error")
+                    "读取失败 \(failedPath, privacy: .public): \(errorText, privacy: .public)")
+            return self.html("读取文件失败。", title: "Canvas 错误")
         }
     }
 
+    /// 解析文件 URL
+    /// - Parameters:
+    ///   - sessionRoot: 会话根目录 URL
+    ///   - requestPath: 请求路径
+    /// - Returns: 解析后的文件 URL，若不存在则返回 nil
     private func resolveFileURL(sessionRoot: URL, requestPath: String) -> URL? {
         let fm = FileManager()
         var candidate = sessionRoot.appendingPathComponent(requestPath, isDirectory: false)
@@ -118,8 +138,8 @@ final class CanvasSchemeHandler: NSObject, WKURLSchemeHandler {
             return candidate
         }
 
-        // Directory index behavior:
-        // - "/yolo" serves "<yolo>/index.html" if that directory exists.
+        // 目录索引行为：
+        // - "/yolo" 如果目录存在，则提供 "<yolo>/index.html"
         if !requestPath.isEmpty, !requestPath.hasSuffix("/") {
             candidate = sessionRoot.appendingPathComponent(requestPath, isDirectory: true)
             if fm.fileExists(atPath: candidate.path, isDirectory: &isDir), isDir.boolValue {
@@ -127,8 +147,8 @@ final class CanvasSchemeHandler: NSObject, WKURLSchemeHandler {
             }
         }
 
-        // Root fallback:
-        // - "/" serves "<sessionRoot>/index.html" if present.
+        // 根目录回退：
+        // - "/" 如果存在，则提供 "<sessionRoot>/index.html"
         if requestPath.isEmpty {
             return self.resolveIndex(in: sessionRoot)
         }
@@ -136,6 +156,9 @@ final class CanvasSchemeHandler: NSObject, WKURLSchemeHandler {
         return nil
     }
 
+    /// 解析目录中的索引文件
+    /// - Parameter dir: 目录 URL
+    /// - Returns: 索引文件 URL，若不存在则返回 nil
     private func resolveIndex(in dir: URL) -> URL? {
         let fm = FileManager()
         let a = dir.appendingPathComponent("index.html", isDirectory: false)
@@ -145,6 +168,11 @@ final class CanvasSchemeHandler: NSObject, WKURLSchemeHandler {
         return nil
     }
 
+    /// 生成 HTML 响应
+    /// - Parameters:
+    ///   - body: HTML 正文内容
+    ///   - title: 页面标题，默认为 "Canvas"
+    /// - Returns: CanvasResponse 实例
     private func html(_ body: String, title: String = "Canvas") -> CanvasResponse {
         let html = """
         <!doctype html>
@@ -185,29 +213,38 @@ final class CanvasSchemeHandler: NSObject, WKURLSchemeHandler {
         return CanvasResponse(mime: "text/html", data: Data(html.utf8))
     }
 
+    /// 生成欢迎页面响应
+    /// - Parameter sessionRoot: 会话根目录 URL
+    /// - Returns: CanvasResponse 实例
     private func welcomePage(sessionRoot: URL) -> CanvasResponse {
         let escaped = sessionRoot.path
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
         let body = """
-        <div style="font-weight:600; font-size:14px;">Canvas is ready.</div>
-        <div class="muted">Create <code>index.html</code> in:</div>
+        <div style="font-weight:600; font-size:14px;">Canvas 已准备就绪。</div>
+        <div class="muted">在以下目录中创建 <code>index.html</code>：</div>
         <div style="margin-top:10px;"><code>\(escaped)</code></div>
         """
         return self.html(body, title: "Canvas")
     }
 
+    /// 生成脚手架页面响应
+    /// - Parameter sessionRoot: 会话根目录 URL
+    /// - Returns: CanvasResponse 实例
     private func scaffoldPage(sessionRoot: URL) -> CanvasResponse {
-        // Default Canvas UX: when no index exists, show the built-in scaffold page.
+        // 默认 Canvas 用户体验：当不存在索引时，显示内置脚手架页面
         if let data = self.loadBundledResourceData(relativePath: "CanvasScaffold/scaffold.html") {
             return CanvasResponse(mime: "text/html", data: data)
         }
 
-        // Fallback for dev misconfiguration: show the classic welcome page.
+        // 开发配置错误的回退：显示经典欢迎页面
         return self.welcomePage(sessionRoot: sessionRoot)
     }
 
+    /// 加载捆绑资源数据
+    /// - Parameter relativePath: 相对路径
+    /// - Returns: 资源数据，若加载失败则返回 nil
     private func loadBundledResourceData(relativePath: String) -> Data? {
         let trimmed = relativePath.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
@@ -230,6 +267,9 @@ final class CanvasSchemeHandler: NSObject, WKURLSchemeHandler {
         return try? Data(contentsOf: resourceURL)
     }
 
+    /// 根据 MIME 类型获取文本编码名称
+    /// - Parameter mimeType: MIME 类型
+    /// - Returns: 文本编码名称，若不适用则返回 nil
     private func textEncodingName(forMimeType mimeType: String) -> String? {
         if mimeType.hasPrefix("text/") { return "utf-8" }
         switch mimeType {
@@ -242,16 +282,28 @@ final class CanvasSchemeHandler: NSObject, WKURLSchemeHandler {
 }
 
 #if DEBUG
+/// CanvasSchemeHandler 测试扩展
 extension CanvasSchemeHandler {
+    /// 测试响应生成
+    /// - Parameter url: 请求 URL
+    /// - Returns: (MIME 类型, 数据) 元组
     func _testResponse(for url: URL) -> (mime: String, data: Data) {
         let response = self.response(for: url)
         return (response.mime, response.data)
     }
 
+    /// 测试文件 URL 解析
+    /// - Parameters:
+    ///   - sessionRoot: 会话根目录 URL
+    ///   - requestPath: 请求路径
+    /// - Returns: 解析后的文件 URL，若不存在则返回 nil
     func _testResolveFileURL(sessionRoot: URL, requestPath: String) -> URL? {
         self.resolveFileURL(sessionRoot: sessionRoot, requestPath: requestPath)
     }
 
+    /// 测试文本编码名称获取
+    /// - Parameter mimeType: MIME 类型
+    /// - Returns: 文本编码名称，若不适用则返回 nil
     func _testTextEncodingName(for mimeType: String) -> String? {
         self.textEncodingName(forMimeType: mimeType)
     }

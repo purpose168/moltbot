@@ -1,6 +1,7 @@
 import SwiftUI
 
 #if DEBUG
+/// CronSettings 预览提供者
 struct CronSettings_Previews: PreviewProvider {
     static var previews: some View {
         let store = CronJobsStore(isPreview: true)
@@ -8,7 +9,7 @@ struct CronSettings_Previews: PreviewProvider {
             CronJob(
                 id: "job-1",
                 agentId: "ops",
-                name: "Daily summary",
+                name: "每日摘要",
                 description: nil,
                 enabled: true,
                 deleteAfterRun: nil,
@@ -18,7 +19,7 @@ struct CronSettings_Previews: PreviewProvider {
                 sessionTarget: .isolated,
                 wakeMode: .now,
                 payload: .agentTurn(
-                    message: "Summarize inbox",
+                    message: "汇总收件箱",
                     thinking: "low",
                     timeoutSeconds: 600,
                     deliver: true,
@@ -42,7 +43,7 @@ struct CronSettings_Previews: PreviewProvider {
                 action: "finished",
                 status: "ok",
                 error: nil,
-                summary: "All good.",
+                summary: "一切正常。",
                 runAtMs: nil,
                 durationMs: 1234,
                 nextRunAtMs: nil),
@@ -52,8 +53,10 @@ struct CronSettings_Previews: PreviewProvider {
     }
 }
 
+/// CronSettings 测试扩展
 @MainActor
 extension CronSettings {
+    /// 执行测试
     static func exerciseForTesting() {
         let store = CronJobsStore(isPreview: true)
         store.schedulerEnabled = false
@@ -62,8 +65,8 @@ extension CronSettings {
         let job = CronJob(
             id: "job-1",
             agentId: "ops",
-            name: "Daily summary",
-            description: "Summary job",
+            name: "每日摘要",
+            description: "摘要任务",
             enabled: true,
             deleteAfterRun: nil,
             createdAtMs: 1_700_000_000_000,
@@ -72,7 +75,7 @@ extension CronSettings {
             sessionTarget: .isolated,
             wakeMode: .nextHeartbeat,
             payload: .agentTurn(
-                message: "Summarize",
+                message: "汇总",
                 thinking: "low",
                 timeoutSeconds: 120,
                 deliver: true,
@@ -94,7 +97,7 @@ extension CronSettings {
             action: "finished",
             status: "ok",
             error: nil,
-            summary: "done",
+            summary: "完成",
             runAtMs: 1_700_000_050_000,
             durationMs: 1200,
             nextRunAtMs: 1_700_000_200_000)

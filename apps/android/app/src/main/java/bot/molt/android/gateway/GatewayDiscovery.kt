@@ -184,7 +184,7 @@ class GatewayDiscovery(
       }
 
     return when {
-      localCount == 0 && wideRcode == null -> "Searching for gateways…"
+      localCount == 0 && wideRcode == null -> "正在搜索网关…" // Searching for gateways…
       localCount == 0 -> "$wide"
       else -> "Local: $localCount • $wide"
     }

@@ -1,23 +1,29 @@
 import AppKit
 import SwiftUI
 
+/// CritterStatusLabel 扩展
+/// 
+/// 包含 CritterStatusLabel 的行为相关功能
 extension CritterStatusLabel {
+    /// 当前是否正在工作
     private var isWorkingNow: Bool {
         self.iconState.isWorking || self.isWorking
     }
 
+    /// 实际动画是否启用
     private var effectiveAnimationsEnabled: Bool {
         self.animationsEnabled && !self.isSleeping
     }
 
+    /// 视图主体
     var body: some View {
         ZStack(alignment: .topTrailing) {
             self.iconImage
                 .frame(width: 18, height: 18)
                 .rotationEffect(.degrees(self.wiggleAngle), anchor: .center)
                 .offset(x: self.wiggleOffset)
-                // Avoid Combine's TimerPublisher here: on macOS 26.2 we've seen crashes inside executor checks
-                // triggered by its callbacks. Drive periodic updates via a Swift-concurrency task instead.
+                // 避免在这里使用 Combine 的 TimerPublisher：在 macOS 26.2 上，我们看到了由其回调触发的执行器检查内部崩溃
+                // 而是通过 Swift 并发任务来驱动周期性更新。
                 .task(id: self.tickTaskID) {
                     guard self.effectiveAnimationsEnabled, !self.earBoostActive else {
                         await MainActor.run { self.resetMotion() }
@@ -67,11 +73,14 @@ extension CritterStatusLabel {
         .frame(width: 18, height: 18)
     }
 
+    /// 时钟任务 ID
     private var tickTaskID: Int {
-        // Ensure SwiftUI restarts (and cancels) the task when these change.
+        // 确保当这些值改变时，SwiftUI 会重启（并取消）任务。
         (self.effectiveAnimationsEnabled ? 1 : 0) | (self.earBoostActive ? 2 : 0)
     }
 
+    /// 时钟更新
+    /// - Parameter now: 当前时间
     private func tick(_ now: Date) {
         guard self.effectiveAnimationsEnabled, !self.earBoostActive else {
             self.resetMotion()
@@ -103,6 +112,7 @@ extension CritterStatusLabel {
         }
     }
 
+    /// 图标图像
     private var iconImage: Image {
         let badge: CritterIconRenderer.Badge? = if let prominence = self.iconState.badgeProminence, !self.isPaused {
             CritterIconRenderer.Badge(
@@ -129,6 +139,7 @@ extension CritterStatusLabel {
             badge: badge))
     }
 
+    /// 重置动作
     private func resetMotion() {
         self.blinkAmount = 0
         self.wiggleAngle = 0
@@ -137,6 +148,7 @@ extension CritterStatusLabel {
         self.earWiggle = 0
     }
 
+    /// 眨眼
     private func blink() {
         withAnimation(.easeInOut(duration: 0.08)) { self.blinkAmount = 1 }
         Task { @MainActor in
@@ -145,6 +157,7 @@ extension CritterStatusLabel {
         }
     }
 
+    /// 摆动
     private func wiggle() {
         let targetAngle = Double.random(in: -4.5...4.5)
         let targetOffset = CGFloat.random(in: -0.5...0.5)
@@ -161,6 +174,7 @@ extension CritterStatusLabel {
         }
     }
 
+    /// 摆动腿
     private func wiggleLegs() {
         let target = CGFloat.random(in: 0.35...0.9)
         withAnimation(.easeInOut(duration: 0.14)) {
@@ -172,6 +186,7 @@ extension CritterStatusLabel {
         }
     }
 
+    /// 急促移动
     private func scurry() {
         let target = CGFloat.random(in: 0.7...1.0)
         withAnimation(.easeInOut(duration: 0.12)) {
@@ -187,6 +202,7 @@ extension CritterStatusLabel {
         }
     }
 
+    /// 摆动耳朵
     private func wiggleEars() {
         let target = CGFloat.random(in: -1.2...1.2)
         withAnimation(.interpolatingSpring(stiffness: 260, damping: 19)) {
@@ -200,6 +216,8 @@ extension CritterStatusLabel {
         }
     }
 
+    /// 安排随机计时器
+    /// - Parameter date: 起始日期
     private func scheduleRandomTimers(from date: Date) {
         self.nextBlink = date.addingTimeInterval(Double.random(in: 3.5...8.5))
         self.nextWiggle = date.addingTimeInterval(Double.random(in: 6.5...14))
@@ -207,6 +225,7 @@ extension CritterStatusLabel {
         self.nextEarWiggle = date.addingTimeInterval(Double.random(in: 7.0...14.0))
     }
 
+    /// 网关是否需要注意
     private var gatewayNeedsAttention: Bool {
         if self.isSleeping { return false }
         switch self.gatewayStatus {
@@ -217,6 +236,7 @@ extension CritterStatusLabel {
         }
     }
 
+    /// 网关徽章颜色
     private var gatewayBadgeColor: Color {
         switch self.gatewayStatus {
         case .failed: .red
@@ -229,6 +249,7 @@ extension CritterStatusLabel {
 #if DEBUG
 @MainActor
 extension CritterStatusLabel {
+    /// 用于测试的练习函数
     static func exerciseForTesting() async {
         var label = CritterStatusLabel(
             isPaused: false,

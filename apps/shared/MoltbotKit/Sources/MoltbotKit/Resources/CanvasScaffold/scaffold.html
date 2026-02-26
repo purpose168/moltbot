@@ -3,16 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Canvas</title>
+    <title>画布</title>
     <script>
       (() => {
         try {
+          // 获取URL参数中的平台信息
           const params = new URLSearchParams(window.location.search);
           const platform = (params.get('platform') || '').trim().toLowerCase();
           if (platform) {
             document.documentElement.dataset.platform = platform;
             return;
           }
+          // 检测Android平台
           if (/android/i.test(navigator.userAgent || '')) {
             document.documentElement.dataset.platform = 'android';
           }
@@ -21,6 +23,7 @@
     </script>
     <style>
       :root { color-scheme: dark; }
+      /* 减少动画效果的媒体查询 */
       @media (prefers-reduced-motion: reduce) {
         body::before, body::after { animation: none !important; }
       }
@@ -33,6 +36,7 @@
           #000;
         overflow: hidden;
       }
+      /* Android平台的背景样式 */
       :root[data-platform="android"] body {
         background:
           radial-gradient(1200px 900px at 15% 20%, rgba(42, 113, 255, 0.62), rgba(0,0,0,0) 55%),
@@ -40,6 +44,7 @@
           radial-gradient(1000px 900px at 60% 90%, rgba(0, 209, 255, 0.48), rgba(0,0,0,0) 60%),
           #0b1328;
       }
+      /* 网格背景效果 */
       body::before {
         content:"";
         position: fixed;
@@ -57,7 +62,9 @@
         pointer-events: none;
         animation: moltbot-grid-drift 140s ease-in-out infinite alternate;
       }
+      /* Android平台的网格透明度调整 */
       :root[data-platform="android"] body::before { opacity: 0.80; }
+      /* 发光背景效果 */
       body::after {
         content:"";
         position: fixed;
@@ -75,23 +82,28 @@
         pointer-events: none;
         animation: moltbot-glow-drift 110s ease-in-out infinite alternate;
       }
+      /* Android平台的发光透明度调整 */
       :root[data-platform="android"] body::after { opacity: 0.85; }
+      /* 混合模式支持检测 */
       @supports (mix-blend-mode: screen) {
         body::after { mix-blend-mode: screen; }
       }
       @supports not (mix-blend-mode: screen) {
         body::after { opacity: 0.70; }
       }
+      /* 网格漂移动画 */
       @keyframes moltbot-grid-drift {
         0%   { transform: translate3d(-12px, 8px, 0) rotate(-7deg); opacity: 0.40; }
         50%  { transform: translate3d( 10px,-7px, 0) rotate(-6.6deg); opacity: 0.56; }
         100% { transform: translate3d(-8px,  6px, 0) rotate(-7.2deg); opacity: 0.42; }
       }
+      /* 发光漂移动画 */
       @keyframes moltbot-glow-drift {
         0%   { transform: translate3d(-18px, 12px, 0) scale(1.02); opacity: 0.40; }
         50%  { transform: translate3d( 14px,-10px, 0) scale(1.05); opacity: 0.52; }
         100% { transform: translate3d(-10px,  8px, 0) scale(1.03); opacity: 0.43; }
       }
+      /* 画布样式 */
       canvas {
         position: fixed;
         inset: 0;
@@ -101,6 +113,7 @@
         touch-action: none;
         z-index: 1;
       }
+      /* Android平台的画布背景 */
       :root[data-platform="android"] #moltbot-canvas {
         background:
           radial-gradient(1100px 800px at 20% 15%, rgba(42, 113, 255, 0.78), rgba(0,0,0,0) 58%),
@@ -108,6 +121,7 @@
           radial-gradient(1000px 900px at 60% 88%, rgba(0, 209, 255, 0.58), rgba(0,0,0,0) 62%),
           #141c33;
       }
+      /* 状态显示容器 */
       #moltbot-status {
         position: fixed;
         inset: 0;
@@ -119,6 +133,7 @@
         pointer-events: none;
         z-index: 3;
       }
+      /* 状态卡片样式 */
       #moltbot-status .card {
         text-align: center;
         padding: 16px 18px;
@@ -129,12 +144,14 @@
         -webkit-backdrop-filter: blur(14px);
         backdrop-filter: blur(14px);
       }
+      /* 状态标题样式 */
       #moltbot-status .title {
         font: 600 20px -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
         letter-spacing: 0.2px;
         color: rgba(255,255,255,0.92);
         text-shadow: 0 0 22px rgba(42, 113, 255, 0.35);
       }
+      /* 状态副标题样式 */
       #moltbot-status .subtitle {
         margin-top: 6px;
         font: 500 12px -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
@@ -146,17 +163,20 @@
     <canvas id="moltbot-canvas"></canvas>
     <div id="moltbot-status">
       <div class="card">
-        <div class="title" id="moltbot-status-title">Ready</div>
-        <div class="subtitle" id="moltbot-status-subtitle">Waiting for agent</div>
+        <div class="title" id="moltbot-status-title">就绪</div>
+        <div class="subtitle" id="moltbot-status-subtitle">等待代理</div>
       </div>
     </div>
     <script>
       (() => {
+        // 获取DOM元素
         const canvas = document.getElementById('moltbot-canvas');
         const ctx = canvas.getContext('2d');
         const statusEl = document.getElementById('moltbot-status');
         const titleEl = document.getElementById('moltbot-status-title');
         const subtitleEl = document.getElementById('moltbot-status-subtitle');
+        
+        // 从URL参数中检测是否启用调试状态
         const debugStatusEnabledByQuery = (() => {
           try {
             const params = new URLSearchParams(window.location.search);
@@ -168,8 +188,10 @@
             return false;
           }
         })();
+        
         let debugStatusEnabled = debugStatusEnabledByQuery;
 
+        // 调整画布大小以适应设备像素比
         function resize() {
           const dpr = window.devicePixelRatio || 1;
           const w = Math.max(1, Math.floor(window.innerWidth * dpr));
@@ -179,9 +201,11 @@
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         }
 
+        // 监听窗口大小变化
         window.addEventListener('resize', resize);
         resize();
 
+        // 设置调试状态启用状态
         const setDebugStatusEnabled = (enabled) => {
           debugStatusEnabled = !!enabled;
           if (!statusEl) return;
@@ -190,10 +214,12 @@
           }
         };
 
+        // 初始化状态显示
         if (statusEl && !debugStatusEnabled) {
           statusEl.style.display = 'none';
         }
 
+        // 全局Moltbot对象
         window.__moltbot = {
           canvas,
           ctx,

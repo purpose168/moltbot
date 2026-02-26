@@ -1,15 +1,23 @@
 import Foundation
 import OSLog
 
+/// 连接模式协调器
+/// 
+/// 用于管理应用程序的连接模式，包括启动/停止本地网关、管理控制通道SSH隧道、清理聊天窗口/面板等
 @MainActor
 final class ConnectionModeCoordinator {
+    /// 共享实例
     static let shared = ConnectionModeCoordinator()
 
+    /// 日志记录器
     private let logger = Logger(subsystem: "bot.molt", category: "connection")
+    /// 上次的连接模式
     private var lastMode: AppState.ConnectionMode?
 
-    /// Apply the requested connection mode by starting/stopping local gateway,
-    /// managing the control-channel SSH tunnel, and cleaning up chat windows/panels.
+    /// 应用请求的连接模式
+    /// - Parameters:
+    ///   - mode: 连接模式
+    ///   - paused: 是否暂停
     func apply(mode: AppState.ConnectionMode, paused: Bool) async {
         if let lastMode = self.lastMode, lastMode != mode {
             GatewayProcessManager.shared.clearLastFailure()

@@ -1,10 +1,19 @@
 import Foundation
 
+/// 向导选项结构体，用于表示向导中的可选项目
 public struct WizardOption: Sendable {
+    /// 选项的值
     public let value: AnyCodable?
+    /// 选项的标签，用于显示
     public let label: String
+    /// 选项的提示信息，可选
     public let hint: String?
 
+    /// 初始化向导选项
+    /// - Parameters:
+    ///   - value: 选项的值
+    ///   - label: 选项的标签
+    ///   - hint: 选项的提示信息
     public init(value: AnyCodable?, label: String, hint: String?) {
         self.value = value
         self.label = label
@@ -12,6 +21,9 @@ public struct WizardOption: Sendable {
     }
 }
 
+/// 解码向导步骤
+/// - Parameter raw: 原始的向导步骤数据
+/// - Returns: 解码后的向导步骤对象，如果解码失败则返回nil
 public func decodeWizardStep(_ raw: [String: AnyCodable]?) -> WizardStep? {
     guard let raw else { return nil }
     do {
@@ -22,6 +34,9 @@ public func decodeWizardStep(_ raw: [String: AnyCodable]?) -> WizardStep? {
     }
 }
 
+/// 解析向导选项列表
+/// - Parameter raw: 原始的向导选项数据数组
+/// - Returns: 解析后的向导选项数组
 public func parseWizardOptions(_ raw: [[String: AnyCodable]]?) -> [WizardOption] {
     guard let raw else { return [] }
     return raw.map { entry in
@@ -32,14 +47,23 @@ public func parseWizardOptions(_ raw: [[String: AnyCodable]]?) -> [WizardOption]
     }
 }
 
+/// 将向导状态值转换为字符串
+/// - Parameter value: 状态值
+/// - Returns: 处理后的字符串，去除空白并转为小写
 public func wizardStatusString(_ value: AnyCodable?) -> String? {
     (value?.value as? String)?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 }
 
+/// 获取向导步骤类型
+/// - Parameter step: 向导步骤对象
+/// - Returns: 步骤类型字符串
 public func wizardStepType(_ step: WizardStep) -> String {
     (step.type.value as? String) ?? ""
 }
 
+/// 将AnyCodable值转换为字符串
+/// - Parameter value: AnyCodable值
+/// - Returns: 转换后的字符串
 public func anyCodableString(_ value: AnyCodable?) -> String {
     switch value?.value {
     case let string as String:
@@ -55,6 +79,9 @@ public func anyCodableString(_ value: AnyCodable?) -> String {
     }
 }
 
+/// 将AnyCodable值转换为布尔值
+/// - Parameter value: AnyCodable值
+/// - Returns: 转换后的布尔值
 public func anyCodableBool(_ value: AnyCodable?) -> Bool {
     switch value?.value {
     case let bool as Bool:
@@ -71,6 +98,9 @@ public func anyCodableBool(_ value: AnyCodable?) -> Bool {
     }
 }
 
+/// 将AnyCodable值转换为AnyCodable数组
+/// - Parameter value: AnyCodable值
+/// - Returns: 转换后的AnyCodable数组
 public func anyCodableArray(_ value: AnyCodable?) -> [AnyCodable] {
     switch value?.value {
     case let arr as [AnyCodable]:
@@ -82,6 +112,11 @@ public func anyCodableArray(_ value: AnyCodable?) -> [AnyCodable] {
     }
 }
 
+/// 比较两个AnyCodable值是否相等
+/// - Parameters:
+///   - lhs: 左侧值
+///   - rhs: 右侧值
+/// - Returns: 是否相等
 public func anyCodableEqual(_ lhs: AnyCodable?, _ rhs: AnyCodable?) -> Bool {
     switch (lhs?.value, rhs?.value) {
     case let (l as String, r as String):

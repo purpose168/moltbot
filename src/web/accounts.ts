@@ -8,34 +8,66 @@ import { DEFAULT_ACCOUNT_ID } from "../routing/session-key.js";
 import { resolveUserPath } from "../utils.js";
 import { hasWebCredsSync } from "./auth-store.js";
 
+/**
+ * 解析后的 WhatsApp 账户
+ */
 export type ResolvedWhatsAppAccount = {
+  /** 账户 ID */
   accountId: string;
+  /** 账户名称 */
   name?: string;
+  /** 是否启用 */
   enabled: boolean;
+  /** 是否发送已读回执 */
   sendReadReceipts: boolean;
+  /** 消息前缀 */
   messagePrefix?: string;
+  /** 认证目录 */
   authDir: string;
+  /** 是否为旧版认证目录 */
   isLegacyAuthDir: boolean;
+  /** 是否为自聊模式 */
   selfChatMode?: boolean;
+  /** 允许的发送者列表 */
   allowFrom?: string[];
+  /** 群组中允许的发送者列表 */
   groupAllowFrom?: string[];
+  /** 群组策略 */
   groupPolicy?: GroupPolicy;
+  /** 私聊策略 */
   dmPolicy?: DmPolicy;
+  /** 文本分块限制 */
   textChunkLimit?: number;
+  /** 分块模式 */
   chunkMode?: "length" | "newline";
+  /** 媒体文件最大大小（MB） */
   mediaMaxMb?: number;
+  /** 是否阻止流式传输 */
   blockStreaming?: boolean;
+  /** 确认反应 */
   ackReaction?: WhatsAppAccountConfig["ackReaction"];
+  /** 群组配置 */
   groups?: WhatsAppAccountConfig["groups"];
+  /** 去抖动时间（毫秒） */
   debounceMs?: number;
 };
 
+/**
+ * 列出配置的账户 ID
+ * @param cfg - 应用配置
+ * @returns 账户 ID 列表
+ */
 function listConfiguredAccountIds(cfg: MoltbotConfig): string[] {
   const accounts = cfg.channels?.whatsapp?.accounts;
   if (!accounts || typeof accounts !== "object") return [];
   return Object.keys(accounts).filter(Boolean);
 }
 
+/**
+ * 列出 WhatsApp 认证目录
+ * @param cfg - 应用配置
+ * @returns 认证目录列表
+ */
 export function listWhatsAppAuthDirs(cfg: MoltbotConfig): string[] {
   const oauthDir = resolveOAuthDir();
   const whatsappDir = path.join(oauthDir, "whatsapp");
@@ -53,28 +85,49 @@ export function listWhatsAppAuthDirs(cfg: MoltbotConfig): string[] {
       authDirs.add(path.join(whatsappDir, entry.name));
     }
   } catch {
-    // ignore missing dirs
+    // 忽略目录不存在的情况
   }
 
   return Array.from(authDirs);
 }
 
+/**
+ * 检查是否存在任何 WhatsApp 认证
+ * @param cfg - 应用配置
+ * @returns 是否存在认证
+ */
 export function hasAnyWhatsAppAuth(cfg: MoltbotConfig): boolean {
   return listWhatsAppAuthDirs(cfg).some((authDir) => hasWebCredsSync(authDir));
 }
 
+/**
+ * 列出 WhatsApp 账户 ID
+ * @param cfg - 应用配置
+ * @returns 账户 ID 列表
+ */
 export function listWhatsAppAccountIds(cfg: MoltbotConfig): string[] {
   const ids = listConfiguredAccountIds(cfg);
   if (ids.length === 0) return [DEFAULT_ACCOUNT_ID];
   return ids.sort((a, b) => a.localeCompare(b));
 }
 
+/**
+ * 解析默认的 WhatsApp 账户 ID
+ * @param cfg - 应用配置
+ * @returns 默认账户 ID
+ */
 export function resolveDefaultWhatsAppAccountId(cfg: MoltbotConfig): string {
   const ids = listWhatsAppAccountIds(cfg);
   if (ids.includes(DEFAULT_ACCOUNT_ID)) return DEFAULT_ACCOUNT_ID;
   return ids[0] ?? DEFAULT_ACCOUNT_ID;
 }
 
+/**
+ * 解析账户配置
+ * @param cfg - 应用配置
+ * @param accountId - 账户 ID
+ * @returns 账户配置
+ */
 function resolveAccountConfig(
   cfg: MoltbotConfig,
   accountId: string,
@@ -85,15 +138,29 @@ function resolveAccountConfig(
   return entry;
 }
 
+/**
+ * 解析默认认证目录
+ * @param accountId - 账户 ID
+ * @returns 认证目录路径
+ */
 function resolveDefaultAuthDir(accountId: string): string {
   return path.join(resolveOAuthDir(), "whatsapp", accountId);
 }
 
+/**
+ * 解析旧版认证目录
+ * @returns 旧版认证目录路径
+ */
 function resolveLegacyAuthDir(): string {
-  // Legacy Baileys creds lived in the same directory as OAuth tokens.
+  // 旧版 Baileys 凭证存储在与 OAuth 令牌相同的目录中
   return resolveOAuthDir();
 }
 
+/**
+ * 检查旧版认证是否存在
+ * @param authDir - 认证目录
+ * @returns 是否存在旧版认证
+ */
 function legacyAuthExists(authDir: string): boolean {
   try {
     return fs.existsSync(path.join(authDir, "creds.json"));
@@ -102,6 +169,13 @@ function legacyAuthExists(authDir: string): boolean {
   }
 }
 
+/**
+ * 解析 WhatsApp 认证目录
+ * @param params - 解析参数
+ * @param params.cfg - 应用配置
+ * @param params.accountId - 账户 ID
+ * @returns 认证目录和是否为旧版
+ */
 export function resolveWhatsAppAuthDir(params: { cfg: MoltbotConfig; accountId: string }): {
   authDir: string;
   isLegacy: boolean;
@@ -124,6 +198,13 @@ export function resolveWhatsAppAuthDir(params: { cfg: MoltbotConfig; accountId: 
   return { authDir: defaultDir, isLegacy: false };
 }
 
+/**
+ * 解析 WhatsApp 账户
+ * @param params - 解析参数
+ * @param params.cfg - 应用配置
+ * @param params.accountId - 账户 ID
+ * @returns 解析后的账户
+ */
 export function resolveWhatsAppAccount(params: {
   cfg: MoltbotConfig;
   accountId?: string | null;
@@ -160,6 +241,11 @@ export function resolveWhatsAppAccount(params: {
   };
 }
 
+/**
+ * 列出启用的 WhatsApp 账户
+ * @param cfg - 应用配置
+ * @returns 启用的账户列表
+ */
 export function listEnabledWhatsAppAccounts(cfg: MoltbotConfig): ResolvedWhatsAppAccount[] {
   return listWhatsAppAccountIds(cfg)
     .map((accountId) => resolveWhatsAppAccount({ cfg, accountId }))

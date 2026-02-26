@@ -44,8 +44,8 @@ struct SettingsTab: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Node") {
-                    TextField("Name", text: self.$displayName)
+                Section("节点") {
+                    TextField("名称", text: self.$displayName)
                     Text(self.instanceId)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -55,50 +55,50 @@ struct SettingsTab: View {
                                 Button {
                                     UIPasteboard.general.string = ip
                                 } label: {
-                                    Label("Copy", systemImage: "doc.on.doc")
+                                    Label("复制", systemImage: "doc.on.doc")
                                 }
                             }
                         }
-                    LabeledContent("Platform", value: self.platformString())
-                    LabeledContent("Version", value: self.appVersion())
-                    LabeledContent("Model", value: self.modelIdentifier())
+                    LabeledContent("平台", value: self.platformString())
+                    LabeledContent("版本", value: self.appVersion())
+                    LabeledContent("型号", value: self.modelIdentifier())
                 }
 
-                Section("Gateway") {
-                    LabeledContent("Discovery", value: self.gatewayController.discoveryStatusText)
-                    LabeledContent("Status", value: self.appModel.gatewayStatusText)
+                Section("网关") {
+                    LabeledContent("发现", value: self.gatewayController.discoveryStatusText)
+                    LabeledContent("状态", value: self.appModel.gatewayStatusText)
                     if let serverName = self.appModel.gatewayServerName {
-                        LabeledContent("Server", value: serverName)
+                        LabeledContent("服务器", value: serverName)
                         if let addr = self.appModel.gatewayRemoteAddress {
                             let parts = Self.parseHostPort(from: addr)
                             let urlString = Self.httpURLString(host: parts?.host, port: parts?.port, fallback: addr)
-                            LabeledContent("Address") {
+                            LabeledContent("地址") {
                                 Text(urlString)
                             }
                             .contextMenu {
                                 Button {
                                     UIPasteboard.general.string = urlString
                                 } label: {
-                                    Label("Copy URL", systemImage: "doc.on.doc")
+                                    Label("复制 URL", systemImage: "doc.on.doc")
                                 }
 
                                 if let parts {
                                     Button {
                                         UIPasteboard.general.string = parts.host
                                     } label: {
-                                        Label("Copy Host", systemImage: "doc.on.doc")
+                                        Label("复制主机", systemImage: "doc.on.doc")
                                     }
 
                                     Button {
                                         UIPasteboard.general.string = "\(parts.port)"
                                     } label: {
-                                        Label("Copy Port", systemImage: "doc.on.doc")
+                                        Label("复制端口", systemImage: "doc.on.doc")
                                     }
                                 }
                             }
                         }
 
-                        Button("Disconnect", role: .destructive) {
+                        Button("断开连接", role: .destructive) {
                             self.appModel.disconnectGateway()
                         }
 
@@ -113,17 +113,17 @@ struct SettingsTab: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    DisclosureGroup("Advanced") {
-                        Toggle("Use Manual Gateway", isOn: self.$manualGatewayEnabled)
+                    DisclosureGroup("高级") {
+                        Toggle("使用手动网关", isOn: self.$manualGatewayEnabled)
 
-                        TextField("Host", text: self.$manualGatewayHost)
+                        TextField("主机", text: self.$manualGatewayHost)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
 
-                        TextField("Port", value: self.$manualGatewayPort, format: .number)
+                        TextField("端口", value: self.$manualGatewayPort, format: .number)
                             .keyboardType(.numberPad)
 
-                        Toggle("Use TLS", isOn: self.$manualGatewayTLS)
+                        Toggle("使用 TLS", isOn: self.$manualGatewayTLS)
 
                         Button {
                             Task { await self.connectManual() }
@@ -132,10 +132,10 @@ struct SettingsTab: View {
                                 HStack(spacing: 8) {
                                     ProgressView()
                                         .progressViewStyle(.circular)
-                                    Text("Connecting…")
+                                    Text("连接中…")
                                 }
                             } else {
-                                Text("Connect (Manual)")
+                                Text("连接 (手动)")
                             }
                         }
                         .disabled(self.connectingGatewayID != nil || self.manualGatewayHost
@@ -143,82 +143,82 @@ struct SettingsTab: View {
                             .isEmpty || self.manualGatewayPort <= 0 || self.manualGatewayPort > 65535)
 
                         Text(
-                            "Use this when mDNS/Bonjour discovery is blocked. "
-                                + "The gateway WebSocket listens on port 18789 by default.")
+                            "当 mDNS/Bonjour 发现被阻止时使用此选项。 "
+                                + "网关 WebSocket 默认监听 18789 端口。")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
 
-                        Toggle("Discovery Debug Logs", isOn: self.$discoveryDebugLogsEnabled)
+                        Toggle("发现调试日志", isOn: self.$discoveryDebugLogsEnabled)
                             .onChange(of: self.discoveryDebugLogsEnabled) { _, newValue in
                                 self.gatewayController.setDiscoveryDebugLoggingEnabled(newValue)
                             }
 
-                        NavigationLink("Discovery Logs") {
+                        NavigationLink("发现日志") {
                             GatewayDiscoveryDebugLogView()
                         }
 
-                        Toggle("Debug Canvas Status", isOn: self.$canvasDebugStatusEnabled)
+                        Toggle("调试画布状态", isOn: self.$canvasDebugStatusEnabled)
 
-                        TextField("Gateway Token", text: self.$gatewayToken)
+                        TextField("网关令牌", text: self.$gatewayToken)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
 
-                        SecureField("Gateway Password", text: self.$gatewayPassword)
+                        SecureField("网关密码", text: self.$gatewayPassword)
                     }
                 }
 
-                Section("Voice") {
-                    Toggle("Voice Wake", isOn: self.$voiceWakeEnabled)
+                Section("语音") {
+                    Toggle("语音唤醒", isOn: self.$voiceWakeEnabled)
                         .onChange(of: self.voiceWakeEnabled) { _, newValue in
                             self.appModel.setVoiceWakeEnabled(newValue)
                         }
-                    Toggle("Talk Mode", isOn: self.$talkEnabled)
+                    Toggle("对话模式", isOn: self.$talkEnabled)
                         .onChange(of: self.talkEnabled) { _, newValue in
                             self.appModel.setTalkEnabled(newValue)
                         }
-                    // Keep this separate so users can hide the side bubble without disabling Talk Mode.
-                    Toggle("Show Talk Button", isOn: self.$talkButtonEnabled)
+                    // 保持此选项独立，以便用户可以隐藏侧边气泡而不禁用对话模式。
+                    Toggle("显示对话按钮", isOn: self.$talkButtonEnabled)
 
                     NavigationLink {
                         VoiceWakeWordsSettingsView()
                     } label: {
                         LabeledContent(
-                            "Wake Words",
+                            "唤醒词",
                             value: VoiceWakePreferences.displayString(for: self.voiceWake.triggerWords))
                     }
                 }
 
-                Section("Camera") {
-                    Toggle("Allow Camera", isOn: self.$cameraEnabled)
-                    Text("Allows the gateway to request photos or short video clips (foreground only).")
+                Section("相机") {
+                    Toggle("允许相机", isOn: self.$cameraEnabled)
+                    Text("允许网关请求照片或短视频片段（仅前台）。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Location") {
-                    Picker("Location Access", selection: self.$locationEnabledModeRaw) {
-                        Text("Off").tag(MoltbotLocationMode.off.rawValue)
-                        Text("While Using").tag(MoltbotLocationMode.whileUsing.rawValue)
-                        Text("Always").tag(MoltbotLocationMode.always.rawValue)
+                Section("位置") {
+                    Picker("位置访问", selection: self.$locationEnabledModeRaw) {
+                        Text("关闭").tag(MoltbotLocationMode.off.rawValue)
+                        Text("使用时").tag(MoltbotLocationMode.whileUsing.rawValue)
+                        Text("始终").tag(MoltbotLocationMode.always.rawValue)
                     }
                     .pickerStyle(.segmented)
 
-                    Toggle("Precise Location", isOn: self.$locationPreciseEnabled)
+                    Toggle("精确位置", isOn: self.$locationPreciseEnabled)
                         .disabled(self.locationMode == .off)
 
-                    Text("Always requires system permission and may prompt to open Settings.")
+                    Text("始终需要系统权限，可能会提示打开设置。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Screen") {
-                    Toggle("Prevent Sleep", isOn: self.$preventSleep)
-                    Text("Keeps the screen awake while Moltbot is open.")
+                Section("屏幕") {
+                    Toggle("防止睡眠", isOn: self.$preventSleep)
+                    Text("在 Moltbot 打开时保持屏幕唤醒。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Settings")
+            .navigationTitle("设置")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -226,7 +226,7 @@ struct SettingsTab: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel("Close")
+                    .accessibilityLabel("关闭")
                 }
             }
             .onAppear {
@@ -278,7 +278,7 @@ struct SettingsTab: View {
     @ViewBuilder
     private func gatewayList(showing: GatewayListMode) -> some View {
         if self.gatewayController.gateways.isEmpty {
-            Text("No gateways found yet.")
+            Text("尚未发现网关。")
                 .foregroundStyle(.secondary)
         } else {
             let connectedID = self.appModel.connectedGatewayID
@@ -293,7 +293,7 @@ struct SettingsTab: View {
             }
 
             if rows.isEmpty, showing == .availableOnly {
-                Text("No other gateways found.")
+                Text("未发现其他网关。")
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(rows) { gateway in
@@ -316,7 +316,7 @@ struct SettingsTab: View {
                                 ProgressView()
                                     .progressViewStyle(.circular)
                             } else {
-                                Text("Connect")
+                                Text("连接")
                             }
                         }
                         .disabled(self.connectingGatewayID != nil)
@@ -380,11 +380,11 @@ struct SettingsTab: View {
     private func connectManual() async {
         let host = self.manualGatewayHost.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !host.isEmpty else {
-            self.connectStatus.text = "Failed: host required"
+            self.connectStatus.text = "失败：需要主机"
             return
         }
         guard self.manualGatewayPort > 0, self.manualGatewayPort <= 65535 else {
-            self.connectStatus.text = "Failed: invalid port"
+            self.connectStatus.text = "失败：无效端口"
             return
         }
 
@@ -446,7 +446,7 @@ struct SettingsTab: View {
 
     private func gatewayDetailLines(_ gateway: GatewayDiscoveryModel.DiscoveredGateway) -> [String] {
         var lines: [String] = []
-        if let lanHost = gateway.lanHost { lines.append("LAN: \(lanHost)") }
+        if let lanHost = gateway.lanHost { lines.append("局域网: \(lanHost)") }
         if let tailnet = gateway.tailnetDns { lines.append("Tailnet: \(tailnet)") }
 
         let gatewayPort = gateway.gatewayPort
@@ -454,7 +454,7 @@ struct SettingsTab: View {
         if gatewayPort != nil || canvasPort != nil {
             let gw = gatewayPort.map(String.init) ?? "—"
             let canvas = canvasPort.map(String.init) ?? "—"
-            lines.append("Ports: gateway \(gw) · canvas \(canvas)")
+            lines.append("端口: 网关 \(gw) · 画布 \(canvas)")
         }
 
         if lines.isEmpty {

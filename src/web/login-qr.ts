@@ -17,36 +17,71 @@ import {
   webAuthExists,
 } from "./session.js";
 
+/**
+ * WhatsApp Web 套接字类型定义
+ */
 type WaSocket = Awaited<ReturnType<typeof createWaSocket>>;
 
+/**
+ * 活跃登录会话类型定义
+ */
 type ActiveLogin = {
+  /** 账户ID */
   accountId: string;
+  /** 认证目录路径 */
   authDir: string;
+  /** 是否为旧版认证目录 */
   isLegacyAuthDir: boolean;
+  /** 登录会话ID */
   id: string;
+  /** WhatsApp Web 套接字实例 */
   sock: WaSocket;
+  /** 登录开始时间戳 */
   startedAt: number;
+  /** QR码字符串 */
   qr?: string;
+  /** QR码数据URL (base64格式) */
   qrDataUrl?: string;
+  /** 是否已连接 */
   connected: boolean;
+  /** 错误信息 */
   error?: string;
+  /** 错误状态码 */
   errorStatus?: number;
+  /** 等待连接的Promise */
   waitPromise: Promise<void>;
+  /** 是否已尝试重启连接 */
   restartAttempted: boolean;
+  /** 是否启用详细日志 */
   verbose: boolean;
 };
 
+/**
+ * 活跃登录会话的过期时间（3分钟）
+ */
 const ACTIVE_LOGIN_TTL_MS = 3 * 60_000;
+/**
+ * 存储活跃登录会话的映射
+ */
 const activeLogins = new Map<string, ActiveLogin>();
 
+/**
+ * 关闭 WhatsApp Web 套接字连接
+ * @param sock WhatsApp Web 套接字实例
+ */
 function closeSocket(sock: WaSocket) {
   try {
     sock.ws?.close();
   } catch {
-    // ignore
+    // 忽略关闭错误
   }
 }
 
+/**
+ * 重置活跃登录会话
+ * @param accountId 账户ID
+ * @param reason 重置原因（可选）
+ */
 async function resetActiveLogin(accountId: string, reason?: string) {
   const login = activeLogins.get(accountId);
   if (login) {
@@ -58,10 +93,20 @@ async function resetActiveLogin(accountId: string, reason?: string) {
   }
 }
 
+/**
+ * 检查登录会话是否新鲜（未过期）
+ * @param login 登录会话对象
+ * @returns 是否新鲜
+ */
 function isLoginFresh(login: ActiveLogin) {
   return Date.now() - login.startedAt < ACTIVE_LOGIN_TTL_MS;
 }
 
+/**
+ * 为登录会话附加连接等待器
+ * @param accountId 账户ID
+ * @param login 登录会话对象
+ */
 function attachLoginWaiter(accountId: string, login: ActiveLogin) {
   login.waitPromise = waitForWaConnection(login.sock)
     .then(() => {
@@ -76,6 +121,12 @@ function attachLoginWaiter(accountId: string, login: ActiveLogin) {
     });
 }
 
+/**
+ * 重启登录套接字连接
+ * @param login 登录会话对象
+ * @param runtime 运行时环境
+ * @returns 是否重启成功
+ */
 async function restartLoginSocket(login: ActiveLogin, runtime: RuntimeEnv) {
   if (login.restartAttempted) return false;
   login.restartAttempted = true;
@@ -100,6 +151,16 @@ async function restartLoginSocket(login: ActiveLogin, runtime: RuntimeEnv) {
   }
 }
 
+/**
+ * 开始 WhatsApp Web 登录流程，生成 QR 码
+ * @param opts 选项配置
+ * @param opts.verbose 是否启用详细日志
+ * @param opts.timeoutMs 超时时间（毫秒）
+ * @param opts.force 是否强制重新登录
+ * @param opts.accountId 账户ID
+ * @param opts.runtime 运行时环境
+ * @returns 包含 QR 码数据和消息的对象
+ */
 export async function startWebLoginWithQr(
   opts: {
     verbose?: boolean;
@@ -117,7 +178,7 @@ export async function startWebLoginWithQr(
   if (hasWeb && !opts.force) {
     const who = selfId.e164 ?? selfId.jid ?? "unknown";
     return {
-      message: `WhatsApp is already linked (${who}). Say “relink” if you want a fresh QR.`,
+      message: `WhatsApp is already linked (${who}). Say "relink" if you want a fresh QR.`,
     };
   }
 
@@ -202,6 +263,14 @@ export async function startWebLoginWithQr(
   };
 }
 
+/**
+ * 等待 WhatsApp Web 登录完成
+ * @param opts 选项配置
+ * @param opts.timeoutMs 超时时间（毫秒）
+ * @param opts.runtime 运行时环境
+ * @param opts.accountId 账户ID
+ * @returns 包含连接状态和消息的对象
+ */
 export async function waitForWebLogin(
   opts: { timeoutMs?: number; runtime?: RuntimeEnv; accountId?: string } = {},
 ): Promise<{ connected: boolean; message: string }> {
@@ -232,7 +301,7 @@ export async function waitForWebLogin(
     if (remaining <= 0) {
       return {
         connected: false,
-        message: "Still waiting for the QR scan. Let me know when you’ve scanned it.",
+        message: "Still waiting for the QR scan. Let me know when you've scanned it.",
       };
     }
     const timeout = new Promise<"timeout">((resolve) =>
@@ -243,7 +312,7 @@ export async function waitForWebLogin(
     if (result === "timeout") {
       return {
         connected: false,
-        message: "Still waiting for the QR scan. Let me know when you’ve scanned it.",
+        message: "Still waiting for the QR scan. Let me know when you've scanned it.",
       };
     }
 

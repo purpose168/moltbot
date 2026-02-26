@@ -1,65 +1,65 @@
 ---
-summary: "All configuration options for ~/.clawdbot/moltbot.json with examples"
+summary: "~/.clawdbot/moltbot.json 的所有配置选项及示例"
 read_when:
-  - Adding or modifying config fields
+  - 添加或修改配置字段
 ---
-# Configuration 🔧
+# 配置 🔧
 
-Moltbot reads an optional **JSON5** config from `~/.clawdbot/moltbot.json` (comments + trailing commas allowed).
+Moltbot 从 `~/.clawdbot/moltbot.json` 读取可选的 **JSON5** 配置(允许注释和尾随逗号)。
 
-If the file is missing, Moltbot uses safe-ish defaults (embedded Pi agent + per-sender sessions + workspace `~/clawd`). You usually only need a config to:
-- restrict who can trigger the bot (`channels.whatsapp.allowFrom`, `channels.telegram.allowFrom`, etc.)
-- control group allowlists + mention behavior (`channels.whatsapp.groups`, `channels.telegram.groups`, `channels.discord.guilds`, `agents.list[].groupChat`)
-- customize message prefixes (`messages`)
-- set the agent's workspace (`agents.defaults.workspace` or `agents.list[].workspace`)
-- tune the embedded agent defaults (`agents.defaults`) and session behavior (`session`)
-- set per-agent identity (`agents.list[].identity`)
+如果文件不存在,Moltbot 使用安全的默认值(嵌入式 Pi 代理 + 按发送方的会话 + 工作区 `~/clawd`)。通常只需要配置来:
+- 限制谁可以触发机器人(`channels.whatsapp.allowFrom`、`channels.telegram.allowFrom` 等)
+- 控制群组允许列表 + 提及行为(`channels.whatsapp.groups`、`channels.telegram.groups`、`channels.discord.guilds`、`agents.list[].groupChat`)
+- 自定义消息前缀(`messages`)
+- 设置代理的工作区(`agents.defaults.workspace` 或 `agents.list[].workspace`)
+- 调整嵌入式代理默认值(`agents.defaults`)和会话行为(`session`)
+- 设置每个代理的身份(`agents.list[].identity`)
 
-> **New to configuration?** Check out the [Configuration Examples](/gateway/configuration-examples) guide for complete examples with detailed explanations!
+> **配置新手?** 查看[配置示例](/gateway/configuration-examples)指南,获取包含详细说明的完整示例!
 
-## Strict config validation
+## 严格配置验证
 
-Moltbot only accepts configurations that fully match the schema.
-Unknown keys, malformed types, or invalid values cause the Gateway to **refuse to start** for safety.
+Moltbot 只接受完全匹配模式的配置。
+未知的键、格式错误的类型或无效的值会导致网关为了安全而**拒绝启动**。
 
-When validation fails:
-- The Gateway does not boot.
-- Only diagnostic commands are allowed (for example: `moltbot doctor`, `moltbot logs`, `moltbot health`, `moltbot status`, `moltbot service`, `moltbot help`).
-- Run `moltbot doctor` to see the exact issues.
-- Run `moltbot doctor --fix` (or `--yes`) to apply migrations/repairs.
+当验证失败时:
+- 网关不会启动。
+- 只允许诊断命令(例如:`moltbot doctor`、`moltbot logs`、`moltbot health`、`moltbot status`、`moltbot service`、`moltbot help`)。
+- 运行 `moltbot doctor` 查看具体问题。
+- 运行 `moltbot doctor --fix`(或 `--yes`)应用迁移/修复。
 
-Doctor never writes changes unless you explicitly opt into `--fix`/`--yes`.
+除非你明确选择 `--fix`/`--yes`,否则 Doctor 不会写入更改。
 
-## Schema + UI hints
+## 模式 + UI 提示
 
-The Gateway exposes a JSON Schema representation of the config via `config.schema` for UI editors.
-The Control UI renders a form from this schema, with a **Raw JSON** editor as an escape hatch.
+网关通过 `config.schema` 暴露配置的 JSON 模式表示,供 UI 编辑器使用。
+控制 UI 从此模式渲染表单,并提供**原始 JSON**编辑器作为备用方案。
 
-Channel plugins and extensions can register schema + UI hints for their config, so channel settings
-stay schema-driven across apps without hard-coded forms.
+通道插件和扩展可以注册其配置的模式 + UI 提示,因此通道设置
+在应用程序间保持模式驱动,无需硬编码表单。
 
-Hints (labels, grouping, sensitive fields) ship alongside the schema so clients can render
-better forms without hard-coding config knowledge.
+提示(标签、分组、敏感字段)与模式一起提供,以便客户端可以渲染
+更好的表单,而无需硬编码配置知识。
 
-## Apply + restart (RPC)
+## 应用 + 重启 (RPC)
 
-Use `config.apply` to validate + write the full config and restart the Gateway in one step.
-It writes a restart sentinel and pings the last active session after the Gateway comes back.
+使用 `config.apply` 验证 + 写入完整配置并一步重启网关。
+它写入重启标记,并在网关恢复后 ping 最后一个活动会话。
 
-Warning: `config.apply` replaces the **entire config**. If you want to change only a few keys,
-use `config.patch` or `moltbot config set`. Keep a backup of `~/.clawdbot/moltbot.json`.
+警告:`config.apply` 替换**整个配置**。如果只想更改几个键,
+请使用 `config.patch` 或 `moltbot config set`。保留 `~/.clawdbot/moltbot.json` 的备份。
 
-Params:
-- `raw` (string) — JSON5 payload for the entire config
-- `baseHash` (optional) — config hash from `config.get` (required when a config already exists)
-- `sessionKey` (optional) — last active session key for the wake-up ping
-- `note` (optional) — note to include in the restart sentinel
-- `restartDelayMs` (optional) — delay before restart (default 2000)
+参数:
+- `raw` (字符串) — 整个配置的 JSON5 载荷
+- `baseHash` (可选) — 来自 `config.get` 的配置哈希(当配置已存在时必需)
+- `sessionKey` (可选) — 用于唤醒 ping 的最后活动会话键
+- `note` (可选) — 包含在重启标记中的说明
+- `restartDelayMs` (可选) — 重启前的延迟(默认 2000)
 
-Example (via `gateway call`):
+示例(通过 `gateway call`):
 
 ```bash
-moltbot gateway call config.get --params '{}' # capture payload.hash
+moltbot gateway call config.get --params '{}' # 捕获 payload.hash
 moltbot gateway call config.apply --params '{
   "raw": "{\\n  agents: { defaults: { workspace: \\"~/clawd\\" } }\\n}\\n",
   "baseHash": "<hash-from-config.get>",
@@ -68,27 +68,27 @@ moltbot gateway call config.apply --params '{
 }'
 ```
 
-## Partial updates (RPC)
+## 部分更新 (RPC)
 
-Use `config.patch` to merge a partial update into the existing config without clobbering
-unrelated keys. It applies JSON merge patch semantics:
-- objects merge recursively
-- `null` deletes a key
-- arrays replace
-Like `config.apply`, it validates, writes the config, stores a restart sentinel, and schedules
-the Gateway restart (with an optional wake when `sessionKey` is provided).
+使用 `config.patch` 将部分更新合并到现有配置中,而不会覆盖
+不相关的键。它应用 JSON 合并补丁语义:
+- 对象递归合并
+- `null` 删除键
+- 数组替换
+像 `config.apply` 一样,它验证、写入配置、存储重启标记,并调度
+网关重启(当提供 `sessionKey` 时可选唤醒)。
 
-Params:
-- `raw` (string) — JSON5 payload containing just the keys to change
-- `baseHash` (required) — config hash from `config.get`
-- `sessionKey` (optional) — last active session key for the wake-up ping
-- `note` (optional) — note to include in the restart sentinel
-- `restartDelayMs` (optional) — delay before restart (default 2000)
+参数:
+- `raw` (字符串) — 仅包含要更改的键的 JSON5 载荷
+- `baseHash` (必需) — 来自 `config.get` 的配置哈希
+- `sessionKey` (可选) — 用于唤醒 ping 的最后活动会话键
+- `note` (可选) — 包含在重启标记中的说明
+- `restartDelayMs` (可选) — 重启前的延迟(默认 2000)
 
-Example:
+示例:
 
 ```bash
-moltbot gateway call config.get --params '{}' # capture payload.hash
+moltbot gateway call config.get --params '{}' # 捕获 payload.hash
 moltbot gateway call config.patch --params '{
   "raw": "{\\n  channels: { telegram: { groups: { \\"*\\": { requireMention: false } } } }\\n}\\n",
   "baseHash": "<hash-from-config.get>",
@@ -97,7 +97,7 @@ moltbot gateway call config.patch --params '{
 }'
 ```
 
-## Minimal config (recommended starting point)
+## 最小配置(推荐的起点)
 
 ```json5
 {
@@ -106,14 +106,14 @@ moltbot gateway call config.patch --params '{
 }
 ```
 
-Build the default image once with:
+使用以下命令构建默认镜像一次:
 ```bash
 scripts/sandbox-setup.sh
 ```
 
-## Self-chat mode (recommended for group control)
+## 自聊模式(推荐用于群组控制)
 
-To prevent the bot from responding to WhatsApp @-mentions in groups (only respond to specific text triggers):
+为了防止机器人在群组中响应 WhatsApp @-提及(仅响应特定文本触发):
 
 ```json5
 {
@@ -128,7 +128,7 @@ To prevent the bot from responding to WhatsApp @-mentions in groups (only respon
   },
   channels: {
     whatsapp: {
-      // Allowlist is DMs only; including your own number enables self-chat mode.
+      // 允许列表仅限私信;包括你自己的号码可启用自聊模式。
       allowFrom: ["+15555550123"],
       groups: { "*": { requireMention: true } }
     }
@@ -136,24 +136,24 @@ To prevent the bot from responding to WhatsApp @-mentions in groups (only respon
 }
 ```
 
-## Config Includes (`$include`)
+## 配置包含 (`$include`)
 
-Split your config into multiple files using the `$include` directive. This is useful for:
-- Organizing large configs (e.g., per-client agent definitions)
-- Sharing common settings across environments
-- Keeping sensitive configs separate
+使用 `$include` 指令将配置拆分为多个文件。这适用于:
+- 组织大型配置(例如,按客户端的代理定义)
+- 在环境间共享通用设置
+- 将敏感配置分开
 
-### Basic usage
+### 基本用法
 
 ```json5
 // ~/.clawdbot/moltbot.json
 {
   gateway: { port: 18789 },
   
-  // Include a single file (replaces the key's value)
+  // 包含单个文件(替换键的值)
   agents: { "$include": "./agents.json5" },
   
-  // Include multiple files (deep-merged in order)
+  // 包含多个文件(按顺序深度合并)
   broadcast: { 
     "$include": [
       "./clients/mueller.json5",
@@ -173,24 +173,24 @@ Split your config into multiple files using the `$include` directive. This is us
 }
 ```
 
-### Merge behavior
+### 合并行为
 
-- **Single file**: Replaces the object containing `$include`
-- **Array of files**: Deep-merges files in order (later files override earlier ones)
-- **With sibling keys**: Sibling keys are merged after includes (override included values)
-- **Sibling keys + arrays/primitives**: Not supported (included content must be an object)
+- **单个文件**: 替换包含 `$include` 的对象
+- **文件数组**: 按顺序深度合并文件(后面的文件覆盖前面的文件)
+- **有兄弟键**: 兄弟键在包含后合并(覆盖包含的值)
+- **兄弟键 + 数组/基本类型**: 不支持(包含的内容必须是对象)
 
 ```json5
-// Sibling keys override included values
+// 兄弟键覆盖包含的值
 {
   "$include": "./base.json5",   // { a: 1, b: 2 }
-  b: 99                          // Result: { a: 1, b: 99 }
+  b: 99                          // 结果: { a: 1, b: 99 }
 }
 ```
 
-### Nested includes
+### 嵌套包含
 
-Included files can themselves contain `$include` directives (up to 10 levels deep):
+包含的文件本身可以包含 `$include` 指令(最多 10 层深度):
 
 ```json5
 // clients/mueller.json5
@@ -200,44 +200,44 @@ Included files can themselves contain `$include` directives (up to 10 levels dee
 }
 ```
 
-### Path resolution
+### 路径解析
 
-- **Relative paths**: Resolved relative to the including file
-- **Absolute paths**: Used as-is
-- **Parent directories**: `../` references work as expected
+- **相对路径**: 相对于包含文件解析
+- **绝对路径**: 按原样使用
+- **父目录**: `../` 引用按预期工作
 
 ```json5
-{ "$include": "./sub/config.json5" }      // relative
-{ "$include": "/etc/moltbot/base.json5" } // absolute
-{ "$include": "../shared/common.json5" }   // parent dir
+{ "$include": "./sub/config.json5" }      // 相对
+{ "$include": "/etc/moltbot/base.json5" } // 绝对
+{ "$include": "../shared/common.json5" }   // 父目录
 ```
 
-### Error handling
+### 错误处理
 
-- **Missing file**: Clear error with resolved path
-- **Parse error**: Shows which included file failed
-- **Circular includes**: Detected and reported with include chain
+- **缺少文件**: 显示清晰的错误和解析后的路径
+- **解析错误**: 显示哪个包含的文件失败
+- **循环包含**: 检测并报告包含链
 
-### Example: Multi-client legal setup
+### 示例: 多客户端法律设置
 
 ```json5
 // ~/.clawdbot/moltbot.json
 {
   gateway: { port: 18789, auth: { token: "secret" } },
   
-  // Common agent defaults
+  // 通用代理默认值
   agents: {
     defaults: {
       sandbox: { mode: "all", scope: "session" }
     },
-    // Merge agent lists from all clients
+    // 合并所有客户端的代理列表
     list: { "$include": [
       "./clients/mueller/agents.json5",
       "./clients/schmidt/agents.json5"
     ]}
   },
   
-  // Merge broadcast configs
+  // 合并广播配置
   broadcast: { "$include": [
     "./clients/mueller/broadcast.json5",
     "./clients/schmidt/broadcast.json5"
@@ -262,20 +262,20 @@ Included files can themselves contain `$include` directives (up to 10 levels dee
 }
 ```
 
-## Common options
+## 通用选项
 
-### Env vars + `.env`
+### 环境变量 + `.env`
 
-Moltbot reads env vars from the parent process (shell, launchd/systemd, CI, etc.).
+Moltbot 从父进程(shell、launchd/systemd、CI 等)读取环境变量。
 
-Additionally, it loads:
-- `.env` from the current working directory (if present)
-- a global fallback `.env` from `~/.clawdbot/.env` (aka `$CLAWDBOT_STATE_DIR/.env`)
+此外,它加载:
+- 来自当前工作目录的 `.env`(如果存在)
+- 来自 `~/.clawdbot/.env` 的全局后备 `.env`(即 `$CLAWDBOT_STATE_DIR/.env`)
 
-Neither `.env` file overrides existing env vars.
+两个 `.env` 文件都不会覆盖现有的环境变量。
 
-You can also provide inline env vars in config. These are only applied if the
-process env is missing the key (same non-overriding rule):
+你也可以在配置中提供内联环境变量。这些仅在
+进程环境缺少该键时应用(相同的非覆盖规则):
 
 ```json5
 {
@@ -288,12 +288,12 @@ process env is missing the key (same non-overriding rule):
 }
 ```
 
-See [/environment](/environment) for full precedence and sources.
+查看 [/environment](/environment) 了解完整的优先级和来源。
 
-### `env.shellEnv` (optional)
+### `env.shellEnv` (可选)
 
-Opt-in convenience: if enabled and none of the expected keys are set yet, Moltbot runs your login shell and imports only the missing expected keys (never overrides).
-This effectively sources your shell profile.
+可选的便利功能:如果启用且尚未设置任何预期的键,Moltbot 会运行你的登录 shell 并仅导入缺少的预期键(从不覆盖)。
+这实际上会获取你的 shell 配置文件。
 
 ```json5
 {
@@ -306,14 +306,14 @@ This effectively sources your shell profile.
 }
 ```
 
-Env var equivalent:
+环境变量等效项:
 - `CLAWDBOT_LOAD_SHELL_ENV=1`
 - `CLAWDBOT_SHELL_ENV_TIMEOUT_MS=15000`
 
-### Env var substitution in config
+### 配置中的环境变量替换
 
-You can reference environment variables directly in any config string value using
-`${VAR_NAME}` syntax. Variables are substituted at config load time, before validation.
+你可以使用 `${VAR_NAME}` 语法在任何配置字符串值中直接引用环境变量。
+变量在配置加载时替换,在验证之前。
 
 ```json5
 {
@@ -332,13 +332,13 @@ You can reference environment variables directly in any config string value usin
 }
 ```
 
-**Rules:**
-- Only uppercase env var names are matched: `[A-Z_][A-Z0-9_]*`
-- Missing or empty env vars throw an error at config load
-- Escape with `$${VAR}` to output a literal `${VAR}`
-- Works with `$include` (included files also get substitution)
+**规则:**
+- 仅匹配大写环境变量名称:`[A-Z_][A-Z0-9_]*`
+- 缺少或为空的环境变量在配置加载时抛出错误
+- 使用 `$${VAR}` 转义以输出字面量 `${VAR}`
+- 适用于 `$include`(包含的文件也会进行替换)
 
-**Inline substitution:**
+**内联替换:**
 
 ```json5
 {
@@ -472,23 +472,23 @@ Metadata written by CLI wizards (`onboard`, `configure`, `doctor`).
 
 ### `channels.whatsapp.dmPolicy`
 
-Controls how WhatsApp direct chats (DMs) are handled:
-- `"pairing"` (default): unknown senders get a pairing code; owner must approve
-- `"allowlist"`: only allow senders in `channels.whatsapp.allowFrom` (or paired allow store)
-- `"open"`: allow all inbound DMs (**requires** `channels.whatsapp.allowFrom` to include `"*"`)
-- `"disabled"`: ignore all inbound DMs
+控制如何处理 WhatsApp 直接聊天(DM):
+- `"pairing"`(默认):未知发送者获取配对代码;所有者必须批准
+- `"allowlist"`:仅允许 `channels.whatsapp.allowFrom` 中的发送者(或配对的允许存储)
+- `"open"`:允许所有入站 DM(**需要** `channels.whatsapp.allowFrom` 包含 `"*"`)
+- `"disabled"`:忽略所有入站 DM
 
-Pairing codes expire after 1 hour; the bot only sends a pairing code when a new request is created. Pending DM pairing requests are capped at **3 per channel** by default.
+配对代码在 1 小时后过期;机器人仅在新请求创建时发送配对代码。待处理的 DM 配对请求默认限制为**每个通道 3 个**。
 
-Pairing approvals:
+配对批准:
 - `moltbot pairing list whatsapp`
 - `moltbot pairing approve whatsapp <code>`
 
 ### `channels.whatsapp.allowFrom`
 
-Allowlist of E.164 phone numbers that may trigger WhatsApp auto-replies (**DMs only**).
-If empty and `channels.whatsapp.dmPolicy="pairing"`, unknown senders will receive a pairing code.
-For groups, use `channels.whatsapp.groupPolicy` + `channels.whatsapp.groupAllowFrom`.
+可能触发 WhatsApp 自动回复的 E.164 电话号码允许列表(**仅 DM**)。
+如果为空且 `channels.whatsapp.dmPolicy="pairing"`,未知发送者将收到配对代码。
+对于群组,使用 `channels.whatsapp.groupPolicy` + `channels.whatsapp.groupAllowFrom`。
 
 ```json5
 {
@@ -496,9 +496,9 @@ For groups, use `channels.whatsapp.groupPolicy` + `channels.whatsapp.groupAllowF
     whatsapp: {
       dmPolicy: "pairing", // pairing | allowlist | open | disabled
       allowFrom: ["+15555550123", "+447700900123"],
-      textChunkLimit: 4000, // optional outbound chunk size (chars)
-      chunkMode: "length", // optional chunking mode (length | newline)
-      mediaMaxMb: 50 // optional inbound media cap (MB)
+      textChunkLimit: 4000, // 可选的出站块大小(字符)
+      chunkMode: "length", // 可选的分块模式(length | newline)
+      mediaMaxMb: 50 // 可选的入站媒体上限(MB)
     }
   }
 }
@@ -506,11 +506,11 @@ For groups, use `channels.whatsapp.groupPolicy` + `channels.whatsapp.groupAllowF
 
 ### `channels.whatsapp.sendReadReceipts`
 
-Controls whether inbound WhatsApp messages are marked as read (blue ticks). Default: `true`.
+控制是否将入站 WhatsApp 消息标记为已读(蓝色对勾)。默认:`true`。
 
-Self-chat mode always skips read receipts, even when enabled.
+自聊模式始终跳过已读回执,即使已启用。
 
-Per-account override: `channels.whatsapp.accounts.<id>.sendReadReceipts`.
+每个账户覆盖:`channels.whatsapp.accounts.<id>.sendReadReceipts`。
 
 ```json5
 {
@@ -522,17 +522,17 @@ Per-account override: `channels.whatsapp.accounts.<id>.sendReadReceipts`.
 
 ### `channels.whatsapp.accounts` (multi-account)
 
-Run multiple WhatsApp accounts in one gateway:
+在一个网关中运行多个 WhatsApp 账户:
 
 ```json5
 {
   channels: {
     whatsapp: {
       accounts: {
-        default: {}, // optional; keeps the default id stable
+        default: {}, // 可选;保持默认 id 稳定
         personal: {},
         biz: {
-          // Optional override. Default: ~/.clawdbot/credentials/whatsapp/biz
+          // 可选覆盖。默认: ~/.clawdbot/credentials/whatsapp/biz
           // authDir: "~/.clawdbot/credentials/whatsapp/biz",
         }
       }
@@ -541,13 +541,13 @@ Run multiple WhatsApp accounts in one gateway:
 }
 ```
 
-Notes:
-- Outbound commands default to account `default` if present; otherwise the first configured account id (sorted).
-- The legacy single-account Baileys auth dir is migrated by `moltbot doctor` into `whatsapp/default`.
+说明:
+- 如果存在 `default` 账户,出站命令默认使用该账户;否则使用第一个配置的账户 id(按排序)。
+- 传统的单账户 Baileys 认证目录会被 `moltbot doctor` 迁移到 `whatsapp/default`。
 
 ### `channels.telegram.accounts` / `channels.discord.accounts` / `channels.googlechat.accounts` / `channels.slack.accounts` / `channels.mattermost.accounts` / `channels.signal.accounts` / `channels.imessage.accounts`
 
-Run multiple accounts per channel (each account has its own `accountId` and optional `name`):
+为每个通道运行多个账户(每个账户都有自己的 `accountId` 和可选的 `name`):
 
 ```json5
 {
@@ -568,20 +568,20 @@ Run multiple accounts per channel (each account has its own `accountId` and opti
 }
 ```
 
-Notes:
-- `default` is used when `accountId` is omitted (CLI + routing).
-- Env tokens only apply to the **default** account.
-- Base channel settings (group policy, mention gating, etc.) apply to all accounts unless overridden per account.
-- Use `bindings[].match.accountId` to route each account to a different agents.defaults.
+说明:
+- 当省略 `accountId` 时使用 `default`(CLI + 路由)。
+- 环境变量令牌仅适用于 **default** 账户。
+- 基础通道设置(群组策略、提及限制等)适用于所有账户,除非按账户覆盖。
+- 使用 `bindings[].match.accountId` 将每个账户路由到不同的 agents.defaults。
 
 ### Group chat mention gating (`agents.list[].groupChat` + `messages.groupChat`)
 
-Group messages default to **require mention** (either metadata mention or regex patterns). Applies to WhatsApp, Telegram, Discord, Google Chat, and iMessage group chats.
+群组消息默认为 **需要提及**(元数据提及或正则表达式模式)。适用于 WhatsApp、Telegram、Discord、Google Chat 和 iMessage 群组聊天。
 
-**Mention types:**
-- **Metadata mentions**: Native platform @-mentions (e.g., WhatsApp tap-to-mention). Ignored in WhatsApp self-chat mode (see `channels.whatsapp.allowFrom`).
-- **Text patterns**: Regex patterns defined in `agents.list[].groupChat.mentionPatterns`. Always checked regardless of self-chat mode.
-- Mention gating is enforced only when mention detection is possible (native mentions or at least one `mentionPattern`).
+**提及类型:**
+- **元数据提及**: 原生平台 @-提及(例如 WhatsApp 点击提及)。在 WhatsApp 自聊模式下忽略(参见 `channels.whatsapp.allowFrom`)。
+- **文本模式**: 在 `agents.list[].groupChat.mentionPatterns` 中定义的正则表达式模式。无论自聊模式如何,始终检查。
+- 提及限制仅在可以检测到提及时强制执行(原生提及或至少一个 `mentionPattern`)。
 
 ```json5
 {
@@ -596,33 +596,33 @@ Group messages default to **require mention** (either metadata mention or regex 
 }
 ```
 
-`messages.groupChat.historyLimit` sets the global default for group history context. Channels can override with `channels.<channel>.historyLimit` (or `channels.<channel>.accounts.*.historyLimit` for multi-account). Set `0` to disable history wrapping.
+`messages.groupChat.historyLimit` 设置群组历史上下文的全局默认值。通道可以通过 `channels.<channel>.historyLimit`(对于多账户为 `channels.<channel>.accounts.*.historyLimit`)覆盖。设置为 `0` 可禁用历史包装。
 
 #### DM history limits
 
-DM conversations use session-based history managed by the agent. You can limit the number of user turns retained per DM session:
+DM 对话使用由代理管理的基于会话的历史记录。您可以限制每个 DM 会话保留的用户轮次数量:
 
 ```json5
 {
   channels: {
     telegram: {
-      dmHistoryLimit: 30,  // limit DM sessions to 30 user turns
+      dmHistoryLimit: 30,  // 将 DM 会话限制为 30 个用户轮次
       dms: {
-        "123456789": { historyLimit: 50 }  // per-user override (user ID)
+        "123456789": { historyLimit: 50 }  // 每用户覆盖(用户 ID)
       }
     }
   }
 }
 ```
 
-Resolution order:
-1. Per-DM override: `channels.<provider>.dms[userId].historyLimit`
-2. Provider default: `channels.<provider>.dmHistoryLimit`
-3. No limit (all history retained)
+解析顺序:
+1. 每 DM 覆盖: `channels.<provider>.dms[userId].historyLimit`
+2. 提供商默认: `channels.<provider>.dmHistoryLimit`
+3. 无限制(保留所有历史记录)
 
-Supported providers: `telegram`, `whatsapp`, `discord`, `slack`, `signal`, `imessage`, `msteams`.
+支持的提供商: `telegram`、`whatsapp`、`discord`、`slack`、`signal`、`imessage`、`msteams`。
 
-Per-agent override (takes precedence when set, even `[]`):
+每代理覆盖(设置时优先,即使是 `[]`):
 ```json5
 {
   agents: {
@@ -634,14 +634,14 @@ Per-agent override (takes precedence when set, even `[]`):
 }
 ```
 
-Mention gating defaults live per channel (`channels.whatsapp.groups`, `channels.telegram.groups`, `channels.imessage.groups`, `channels.discord.guilds`). When `*.groups` is set, it also acts as a group allowlist; include `"*"` to allow all groups.
+提及限制默认值按通道存在(`channels.whatsapp.groups`、`channels.telegram.groups`、`channels.imessage.groups`、`channels.discord.guilds`)。当设置 `*.groups` 时,它也充当群组允许列表;包含 `"*"` 以允许所有群组。
 
-To respond **only** to specific text triggers (ignoring native @-mentions):
+要 **仅** 响应特定的文本触发器(忽略原生 @-提及):
 ```json5
 {
   channels: {
     whatsapp: {
-      // Include your own number to enable self-chat mode (ignore native @-mentions).
+      // 包含您自己的号码以启用自聊模式(忽略原生 @-提及)。
       allowFrom: ["+15555550123"],
       groups: { "*": { requireMention: true } }
     }
@@ -651,7 +651,7 @@ To respond **only** to specific text triggers (ignoring native @-mentions):
       {
         id: "main",
         groupChat: {
-          // Only these text patterns will trigger responses
+          // 只有这些文本模式会触发响应
           mentionPatterns: ["reisponde", "@clawd"]
         }
       }
@@ -707,7 +707,7 @@ Notes:
 - `"open"`: groups bypass allowlists; mention-gating still applies.
 - `"disabled"`: block all group/room messages.
 - `"allowlist"`: only allow groups/rooms that match the configured allowlist.
-- `channels.defaults.groupPolicy` sets the default when a provider’s `groupPolicy` is unset.
+- `channels.defaults.groupPolicy` sets the default when a provider's `groupPolicy` is unset.
 - WhatsApp/Telegram/Signal/iMessage/Microsoft Teams use `groupAllowFrom` (fallback: explicit `allowFrom`).
 - Discord/Slack use channel allowlists (`channels.discord.guilds.*.channels`, `channels.slack.channels`).
 - Group DMs (Discord/Slack) are still controlled by `dm.groupEnabled` + `dm.groupChannels`.
@@ -715,64 +715,62 @@ Notes:
 
 ### Multi-agent routing (`agents.list` + `bindings`)
 
-Run multiple isolated agents (separate workspace, `agentDir`, sessions) inside one Gateway.
-Inbound messages are routed to an agent via bindings.
+在一个网关中运行多个隔离的代理(独立的工作区、`agentDir`、会话)。
+入站消息通过绑定路由到代理。
 
-- `agents.list[]`: per-agent overrides.
-  - `id`: stable agent id (required).
-  - `default`: optional; when multiple are set, the first wins and a warning is logged.
-    If none are set, the **first entry** in the list is the default agent.
-  - `name`: display name for the agent.
-  - `workspace`: default `~/clawd-<agentId>` (for `main`, falls back to `agents.defaults.workspace`).
-  - `agentDir`: default `~/.clawdbot/agents/<agentId>/agent`.
-  - `model`: per-agent default model, overrides `agents.defaults.model` for that agent.
-    - string form: `"provider/model"`, overrides only `agents.defaults.model.primary`
-    - object form: `{ primary, fallbacks }` (fallbacks override `agents.defaults.model.fallbacks`; `[]` disables global fallbacks for that agent)
-  - `identity`: per-agent name/theme/emoji (used for mention patterns + ack reactions).
-  - `groupChat`: per-agent mention-gating (`mentionPatterns`).
-  - `sandbox`: per-agent sandbox config (overrides `agents.defaults.sandbox`).
+- `agents.list[]`: 每代理覆盖。
+  - `id`: 稳定的代理 id(必需)。
+  - `default`: 可选;当设置多个时,第一个生效并记录警告。
+    如果未设置任何项,列表中的 **第一个条目** 是默认代理。
+  - `name`: 代理的显示名称。
+  - `workspace`: 默认 `~/clawd-<agentId>`(对于 `main`,回退到 `agents.defaults.workspace`)。
+  - `agentDir`: 默认 `~/.clawdbot/agents/<agentId>/agent`。
+  - `model`: 每代理默认模型,覆盖该代理的 `agents.defaults.model`。
+    - 字符串形式: `"provider/model"`,仅覆盖 `agents.defaults.model.primary`
+    - 对象形式: `{ primary, fallbacks }`(fallbacks 覆盖 `agents.defaults.model.fallbacks`;`[]` 禁用该代理的全局回退)
+  - `identity`: 每代理名称/主题/表情符号(用于提及模式 + 确认反应)。
+  - `groupChat`: 每代理提及限制(`mentionPatterns`)。
+  - `sandbox`: 每代理沙箱配置(覆盖 `agents.defaults.sandbox`)。
     - `mode`: `"off"` | `"non-main"` | `"all"`
     - `workspaceAccess`: `"none"` | `"ro"` | `"rw"`
     - `scope`: `"session"` | `"agent"` | `"shared"`
-    - `workspaceRoot`: custom sandbox workspace root
-    - `docker`: per-agent docker overrides (e.g. `image`, `network`, `env`, `setupCommand`, limits; ignored when `scope: "shared"`)
-    - `browser`: per-agent sandboxed browser overrides (ignored when `scope: "shared"`)
-    - `prune`: per-agent sandbox pruning overrides (ignored when `scope: "shared"`)
-  - `subagents`: per-agent sub-agent defaults.
-    - `allowAgents`: allowlist of agent ids for `sessions_spawn` from this agent (`["*"]` = allow any; default: only same agent)
-  - `tools`: per-agent tool restrictions (applied before sandbox tool policy).
-    - `profile`: base tool profile (applied before allow/deny)
-    - `allow`: array of allowed tool names
-    - `deny`: array of denied tool names (deny wins)
-- `agents.defaults`: shared agent defaults (model, workspace, sandbox, etc.).
-- `bindings[]`: routes inbound messages to an `agentId`.
-  - `match.channel` (required)
-  - `match.accountId` (optional; `*` = any account; omitted = default account)
-  - `match.peer` (optional; `{ kind: dm|group|channel, id }`)
-  - `match.guildId` / `match.teamId` (optional; channel-specific)
+    - `workspaceRoot`: 自定义沙箱工作区根目录
+    - `docker`: 每代理 docker 覆盖(例如 `image`、`network`、`env`、`setupCommand`、限制;当 `scope: "shared"` 时忽略)
+    - `browser`: 每代理沙箱浏览器覆盖(当 `scope: "shared"` 时忽略)
+    - `prune`: 每代理沙箱修剪覆盖(当 `scope: "shared"` 时忽略)
+  - `subagents`: 每代理子代理默认值。
+    - `allowAgents`: 来自此代理的 `sessions_spawn` 的代理 id 允许列表(`["*"]` = 允许任何;默认:仅相同代理)
+  - `tools`: 每代理工具限制(在沙箱工具策略之前应用)。
+    - `profile`: 基础工具配置文件(在允许/拒绝之前应用)
+    - `allow`: 允许的工具名称数组
+    - `deny`: 拒绝的工具名称数组(拒绝优先)
+- `agents.defaults`: 共享代理默认值(模型、工作区、沙箱等)。
+- `bindings[]`: 将入站消息路由到 `agentId`。
+  - `match.channel`(必需)
+  - `match.accountId`(可选;`*` = 任何账户;省略 = 默认账户)
+  - `match.peer`(可选;`{ kind: dm|group|channel, id }`)
+  - `match.guildId` / `match.teamId`(可选;特定于通道)
 
-Deterministic match order:
+确定性匹配顺序:
 1) `match.peer`
 2) `match.guildId`
 3) `match.teamId`
-4) `match.accountId` (exact, no peer/guild/team)
-5) `match.accountId: "*"` (channel-wide, no peer/guild/team)
-6) default agent (`agents.list[].default`, else first list entry, else `"main"`)
+4) `match.accountId`(精确,无 peer/guild/team)
+5) `match.accountId: "*"`(通道范围,无 peer/guild/team)
+6) 默认代理(`agents.list[].default`,否则第一个列表条目,否则 `"main"`)
 
-Within each match tier, the first matching entry in `bindings` wins.
+在每个匹配层内,`bindings` 中第一个匹配的条目获胜。
 
 #### Per-agent access profiles (multi-agent)
 
-Each agent can carry its own sandbox + tool policy. Use this to mix access
-levels in one gateway:
-- **Full access** (personal agent)
-- **Read-only** tools + workspace
-- **No filesystem access** (messaging/session tools only)
+每个代理可以携带自己的沙箱 + 工具策略。使用此功能在一个网关中混合访问级别:
+- **完全访问**(个人代理)
+- **只读**工具 + 工作区
+- **无文件系统访问**(仅消息/会话工具)
 
-See [Multi-Agent Sandbox & Tools](/multi-agent-sandbox-tools) for precedence and
-additional examples.
+有关优先级和其他示例,请参阅 [Multi-Agent Sandbox & Tools](/multi-agent-sandbox-tools)。
 
-Full access (no sandbox):
+完全访问(无沙箱):
 ```json5
 {
   agents: {
@@ -787,7 +785,7 @@ Full access (no sandbox):
 }
 ```
 
-Read-only tools + read-only workspace:
+只读工具 + 只读工作区:
 ```json5
 {
   agents: {
@@ -810,7 +808,7 @@ Read-only tools + read-only workspace:
 }
 ```
 
-No filesystem access (messaging/session tools enabled):
+无文件系统访问(启用消息/会话工具):
 ```json5
 {
   agents: {
@@ -833,7 +831,7 @@ No filesystem access (messaging/session tools enabled):
 }
 ```
 
-Example: two WhatsApp accounts → two agents:
+示例:两个 WhatsApp 账户 → 两个代理:
 
 ```json5
 {
@@ -860,7 +858,7 @@ Example: two WhatsApp accounts → two agents:
 
 ### `tools.agentToAgent` (optional)
 
-Agent-to-agent messaging is opt-in:
+代理到代理消息传递是可选的:
 
 ```json5
 {
@@ -875,7 +873,7 @@ Agent-to-agent messaging is opt-in:
 
 ### `messages.queue`
 
-Controls how inbound messages behave when an agent run is already active.
+控制当代理运行已激活时入站消息的行为。
 
 ```json5
 {
@@ -980,10 +978,10 @@ Set `web.enabled: false` to keep it off by default.
 
 ### `channels.telegram` (bot transport)
 
-Moltbot starts Telegram only when a `channels.telegram` config section exists. The bot token is resolved from `channels.telegram.botToken` (or `channels.telegram.tokenFile`), with `TELEGRAM_BOT_TOKEN` as a fallback for the default account.
-Set `channels.telegram.enabled: false` to disable automatic startup.
-Multi-account support lives under `channels.telegram.accounts` (see the multi-account section above). Env tokens only apply to the default account.
-Set `channels.telegram.configWrites: false` to block Telegram-initiated config writes (including supergroup ID migrations and `/config set|unset`).
+仅当存在 `channels.telegram` 配置节时,Moltbot 才会启动 Telegram。机器人令牌从 `channels.telegram.botToken`(或 `channels.telegram.tokenFile`)解析,对于默认账户,回退到 `TELEGRAM_BOT_TOKEN`。
+设置 `channels.telegram.enabled: false` 以禁用自动启动。
+多账户支持位于 `channels.telegram.accounts` 下(参见上面的多账户节)。环境变量令牌仅适用于默认账户。
+设置 `channels.telegram.configWrites: false` 以阻止 Telegram 发起的配置写入(包括超级组 ID 迁移和 `/config set|unset`)。
 
 ```json5
 {

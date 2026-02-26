@@ -38,7 +38,6 @@ fun ChatSheetContent(viewModel: MainViewModel) {
   val streamingAssistantText by viewModel.chatStreamingAssistantText.collectAsState()
   val pendingToolCalls by viewModel.chatPendingToolCalls.collectAsState()
   val sessions by viewModel.chatSessions.collectAsState()
-
   LaunchedEffect(mainSessionKey) {
     viewModel.loadChat(mainSessionKey)
     viewModel.refreshChatSessions(limit = 200)

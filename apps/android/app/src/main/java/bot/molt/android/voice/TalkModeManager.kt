@@ -297,15 +297,15 @@ class TalkModeManager(
   private suspend fun finalizeTranscript(transcript: String) {
     listeningMode = false
     _isListening.value = false
-    _statusText.value = "Thinking…"
+    _statusText.value = "思考中…"
     lastTranscript = ""
     lastHeardAtMs = null
 
     reloadConfig()
     val prompt = buildPrompt(transcript)
     if (!isConnected()) {
-      _statusText.value = "Gateway not connected"
-      Log.w(tag, "finalize: gateway not connected")
+      _statusText.value = "网关未连接"
+      Log.w(tag, "finalize: 网关未连接")
       start()
       return
     }
@@ -313,25 +313,25 @@ class TalkModeManager(
     try {
       val startedAt = System.currentTimeMillis().toDouble() / 1000.0
       subscribeChatIfNeeded(session = session, sessionKey = mainSessionKey)
-      Log.d(tag, "chat.send start sessionKey=${mainSessionKey.ifBlank { "main" }} chars=${prompt.length}")
+      Log.d(tag, "chat.send 开始 sessionKey=${mainSessionKey.ifBlank { "main" }} 字符数=${prompt.length}")
       val runId = sendChat(prompt, session)
-      Log.d(tag, "chat.send ok runId=$runId")
+      Log.d(tag, "chat.send 成功 runId=$runId")
       val ok = waitForChatFinal(runId)
       if (!ok) {
-        Log.w(tag, "chat final timeout runId=$runId; attempting history fallback")
+        Log.w(tag, "chat 最终超时 runId=$runId; 尝试历史记录回退")
       }
       val assistant = waitForAssistantText(session, startedAt, if (ok) 12_000 else 25_000)
       if (assistant.isNullOrBlank()) {
-        _statusText.value = "No reply"
-        Log.w(tag, "assistant text timeout runId=$runId")
+        _statusText.value = "无回复"
+        Log.w(tag, "助手文本超时 runId=$runId")
         start()
         return
       }
-      Log.d(tag, "assistant text ok chars=${assistant.length}")
+      Log.d(tag, "助手文本成功 字符数=${assistant.length}")
       playAssistant(assistant)
     } catch (err: Throwable) {
-      _statusText.value = "Talk failed: ${err.message ?: err::class.simpleName}"
-      Log.w(tag, "finalize failed: ${err.message ?: err::class.simpleName}")
+      _statusText.value = "对话失败: ${err.message ?: err::class.simpleName}"
+      Log.w(tag, "finalize 失败: ${err.message ?: err::class.simpleName}")
     }
 
     if (_isEnabled.value) {

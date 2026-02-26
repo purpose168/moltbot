@@ -22,7 +22,7 @@ struct ChatSheet: View {
                 viewModel: self.viewModel,
                 showsSessionSwitcher: true,
                 userAccent: self.userAccent)
-                .navigationTitle("Chat")
+                .navigationTitle("聊天")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -31,7 +31,7 @@ struct ChatSheet: View {
                         } label: {
                             Image(systemName: "xmark")
                         }
-                        .accessibilityLabel("Close")
+                        .accessibilityLabel("关闭")
                     }
                 }
         }

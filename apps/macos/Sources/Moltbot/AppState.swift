@@ -4,35 +4,46 @@ import Observation
 import ServiceManagement
 import SwiftUI
 
+/// 应用状态管理类，负责管理应用的所有配置和状态
 @MainActor
 @Observable
 final class AppState {
+    // 预览模式标志
     private let isPreview: Bool
+    // 初始化标志
     private var isInitializing = true
+    // 配置文件监视器
     private var configWatcher: ConfigFileWatcher?
+    // 语音唤醒全局同步抑制标志
     private var suppressVoiceWakeGlobalSync = false
+    // 语音唤醒全局同步任务
     private var voiceWakeGlobalSyncTask: Task<Void, Never>?
 
+    /// 在非预览模式下执行操作
     private func ifNotPreview(_ action: () -> Void) {
         guard !self.isPreview else { return }
         action()
     }
 
+    /// 连接模式枚举
     enum ConnectionMode: String {
-        case unconfigured
-        case local
-        case remote
+        case unconfigured // 未配置
+        case local         // 本地连接
+        case remote        // 远程连接
     }
 
+    /// 远程传输方式枚举
     enum RemoteTransport: String {
-        case ssh
-        case direct
+        case ssh    // SSH传输
+        case direct // 直接传输
     }
 
+    /// 应用暂停状态
     var isPaused: Bool {
         didSet { self.ifNotPreview { UserDefaults.standard.set(self.isPaused, forKey: pauseDefaultsKey) } }
     }
 
+    /// 开机自启动状态
     var launchAtLogin: Bool {
         didSet {
             guard !self.isInitializing else { return }
@@ -40,11 +51,13 @@ final class AppState {
         }
     }
 
+    /// 首次引导已查看状态
     var onboardingSeen: Bool {
         didSet { self.ifNotPreview { UserDefaults.standard.set(self.onboardingSeen, forKey: "moltbot.onboardingSeen") }
         }
     }
 
+    /// 调试面板启用状态
     var debugPaneEnabled: Bool {
         didSet {
             self.ifNotPreview { UserDefaults.standard.set(self.debugPaneEnabled, forKey: "moltbot.debugPaneEnabled") }
@@ -52,6 +65,7 @@ final class AppState {
         }
     }
 
+    /// 语音唤醒启用状态
     var swabbleEnabled: Bool {
         didSet {
             self.ifNotPreview {
@@ -61,9 +75,10 @@ final class AppState {
         }
     }
 
+    /// 语音唤醒触发词
     var swabbleTriggerWords: [String] {
         didSet {
-            // Preserve the raw editing state; sanitization happens when we actually use the triggers.
+            // 保留原始编辑状态；实际使用触发词时会进行清理
             self.ifNotPreview {
                 UserDefaults.standard.set(self.swabbleTriggerWords, forKey: swabbleTriggersKey)
                 if self.swabbleEnabled {
@@ -74,20 +89,24 @@ final class AppState {
         }
     }
 
+    /// 语音唤醒触发提示音
     var voiceWakeTriggerChime: VoiceWakeChime {
         didSet { self.ifNotPreview { self.storeChime(self.voiceWakeTriggerChime, key: voiceWakeTriggerChimeKey) } }
     }
 
+    /// 语音唤醒发送提示音
     var voiceWakeSendChime: VoiceWakeChime {
         didSet { self.ifNotPreview { self.storeChime(self.voiceWakeSendChime, key: voiceWakeSendChimeKey) } }
     }
 
+    /// 图标动画启用状态
     var iconAnimationsEnabled: Bool {
         didSet { self.ifNotPreview { UserDefaults.standard.set(
             self.iconAnimationsEnabled,
             forKey: iconAnimationsEnabledKey) } }
     }
 
+    /// 显示 Dock 图标状态
     var showDockIcon: Bool {
         didSet {
             self.ifNotPreview {
@@ -97,6 +116,7 @@ final class AppState {
         }
     }
 
+    /// 语音唤醒麦克风 ID
     var voiceWakeMicID: String {
         didSet {
             self.ifNotPreview {
@@ -108,10 +128,12 @@ final class AppState {
         }
     }
 
+    /// 语音唤醒麦克风名称
     var voiceWakeMicName: String {
         didSet { self.ifNotPreview { UserDefaults.standard.set(self.voiceWakeMicName, forKey: voiceWakeMicNameKey) } }
     }
 
+    /// 语音唤醒语言区域 ID
     var voiceWakeLocaleID: String {
         didSet {
             self.ifNotPreview {
@@ -123,18 +145,21 @@ final class AppState {
         }
     }
 
+    /// 语音唤醒附加语言区域 ID 数组
     var voiceWakeAdditionalLocaleIDs: [String] {
         didSet { self.ifNotPreview { UserDefaults.standard.set(
             self.voiceWakeAdditionalLocaleIDs,
             forKey: voiceWakeAdditionalLocalesKey) } }
     }
 
+    /// 语音按键通话启用状态
     var voicePushToTalkEnabled: Bool {
         didSet { self.ifNotPreview { UserDefaults.standard.set(
             self.voicePushToTalkEnabled,
             forKey: voicePushToTalkEnabledKey) } }
     }
 
+    /// 通话模式启用状态
     var talkEnabled: Bool {
         didSet {
             self.ifNotPreview {
@@ -144,17 +169,23 @@ final class AppState {
         }
     }
 
-    /// Gateway-provided UI accent color (hex). Optional; clients provide a default.
+    /// Gateway 提供的 UI 强调色（十六进制）。可选；客户端提供默认值。
     var seamColorHex: String?
 
+    /// 图标覆盖选择
     var iconOverride: IconOverrideSelection {
         didSet { self.ifNotPreview { UserDefaults.standard.set(self.iconOverride.rawValue, forKey: iconOverrideKey) } }
     }
 
+    /// 应用工作状态
     var isWorking: Bool = false
+    /// 语音耳朵增强活动状态
     var earBoostActive: Bool = false
+    /// 眨眼动画计数器
     var blinkTick: Int = 0
+    /// 发送庆祝动画计数器
     var sendCelebrationTick: Int = 0
+    /// 心跳启用状态
     var heartbeatsEnabled: Bool {
         didSet {
             self.ifNotPreview {
@@ -164,6 +195,7 @@ final class AppState {
         }
     }
 
+    /// 连接模式
     var connectionMode: ConnectionMode {
         didSet {
             self.ifNotPreview { UserDefaults.standard.set(self.connectionMode.rawValue, forKey: connectionModeKey) }
@@ -171,14 +203,17 @@ final class AppState {
         }
     }
 
+    /// 远程传输方式
     var remoteTransport: RemoteTransport {
         didSet { self.syncGatewayConfigIfNeeded() }
     }
 
+    /// 画布启用状态
     var canvasEnabled: Bool {
         didSet { self.ifNotPreview { UserDefaults.standard.set(self.canvasEnabled, forKey: canvasEnabledKey) } }
     }
 
+    /// 执行批准模式
     var execApprovalMode: ExecApprovalQuickMode {
         didSet {
             self.ifNotPreview {
@@ -190,9 +225,10 @@ final class AppState {
         }
     }
 
-    /// Tracks whether the Canvas panel is currently visible (not persisted).
+    /// 跟踪画布面板当前是否可见（不持久化）。
     var canvasPanelVisible: Bool = false
 
+    /// Peekaboo 桥接启用状态
     var peekabooBridgeEnabled: Bool {
         didSet {
             self.ifNotPreview {
@@ -202,6 +238,7 @@ final class AppState {
         }
     }
 
+    /// 远程目标
     var remoteTarget: String {
         didSet {
             self.ifNotPreview { UserDefaults.standard.set(self.remoteTarget, forKey: remoteTargetKey) }
@@ -209,24 +246,30 @@ final class AppState {
         }
     }
 
+    /// 远程 URL
     var remoteUrl: String {
         didSet { self.syncGatewayConfigIfNeeded() }
     }
 
+    /// 远程身份
     var remoteIdentity: String {
         didSet { self.ifNotPreview { UserDefaults.standard.set(self.remoteIdentity, forKey: remoteIdentityKey) } }
     }
 
+    /// 远程项目根目录
     var remoteProjectRoot: String {
         didSet { self.ifNotPreview { UserDefaults.standard.set(self.remoteProjectRoot, forKey: remoteProjectRootKey) } }
     }
 
+    /// 远程 CLI 路径
     var remoteCliPath: String {
         didSet { self.ifNotPreview { UserDefaults.standard.set(self.remoteCliPath, forKey: remoteCliPathKey) } }
     }
 
+    /// 语音耳朵增强任务
     private var earBoostTask: Task<Void, Never>?
 
+    /// 初始化应用状态
     init(preview: Bool = false) {
         self.isPreview = preview || ProcessInfo.processInfo.isRunningTests
         let onboardingSeen = UserDefaults.standard.bool(forKey: "moltbot.onboardingSeen")
@@ -326,11 +369,13 @@ final class AppState {
         }
     }
 
+    /// 析构函数
     @MainActor
     deinit {
         self.configWatcher?.stop()
     }
 
+    /// 从 URL 字符串中提取远程主机
     private static func remoteHost(from urlString: String?) -> String? {
         guard let raw = urlString?.trimmingCharacters(in: .whitespacesAndNewlines),
               !raw.isEmpty,
@@ -343,6 +388,7 @@ final class AppState {
         return host
     }
 
+    /// 清理 SSH 目标字符串
     private static func sanitizeSSHTarget(_ value: String) -> String {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.hasPrefix("ssh ") {
@@ -352,6 +398,7 @@ final class AppState {
         return trimmed
     }
 
+    /// 启动配置文件监视器
     private func startConfigWatcher() {
         let configUrl = MoltbotConfigFile.url()
         self.configWatcher = ConfigFileWatcher(url: configUrl) { [weak self] in
@@ -362,11 +409,13 @@ final class AppState {
         self.configWatcher?.start()
     }
 
+    /// 从磁盘应用配置
     private func applyConfigFromDisk() {
         let root = MoltbotConfigFile.loadDict()
         self.applyConfigOverrides(root)
     }
 
+    /// 应用配置覆盖
     private func applyConfigOverrides(_ root: [String: Any]) {
         let gateway = root["gateway"] as? [String: Any]
         let modeRaw = (gateway?["mode"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -412,6 +461,7 @@ final class AppState {
         }
     }
 
+    /// 更新远程目标
     private func updateRemoteTarget(host: String) {
         let trimmed = self.remoteTarget.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let parsed = CommandResolver.parseSSHTarget(trimmed) else { return }
@@ -429,6 +479,7 @@ final class AppState {
         }
     }
 
+    /// 同步网关配置（如果需要）
     private func syncGatewayConfigIfNeeded() {
         guard !self.isPreview, !self.isInitializing else { return }
 
@@ -450,7 +501,7 @@ final class AppState {
             : nil
 
         Task { @MainActor in
-            // Keep app-only connection settings local to avoid overwriting remote gateway config.
+            // 保持应用专用连接设置为本地，以避免覆盖远程网关配置。
             var root = MoltbotConfigFile.loadDict()
             var gateway = root["gateway"] as? [String: Any] ?? [:]
             var changed = false
@@ -545,6 +596,7 @@ final class AppState {
         }
     }
 
+    /// 触发语音耳朵增强
     func triggerVoiceEars(ttl: TimeInterval? = 5) {
         self.earBoostTask?.cancel()
         self.earBoostActive = true
@@ -557,20 +609,24 @@ final class AppState {
         }
     }
 
+    /// 停止语音耳朵增强
     func stopVoiceEars() {
         self.earBoostTask?.cancel()
         self.earBoostTask = nil
         self.earBoostActive = false
     }
 
+    /// 执行一次眨眼动画
     func blinkOnce() {
         self.blinkTick &+= 1
     }
 
+    /// 执行发送庆祝动画
     func celebrateSend() {
         self.sendCelebrationTick &+= 1
     }
 
+    /// 设置语音唤醒启用状态
     func setVoiceWakeEnabled(_ enabled: Bool) async {
         guard voiceWakeSupported else {
             self.swabbleEnabled = false
@@ -595,6 +651,7 @@ final class AppState {
         Task { await VoiceWakeRuntime.shared.refresh(state: self) }
     }
 
+    /// 设置通话模式启用状态
     func setTalkEnabled(_ enabled: Bool) async {
         guard voiceWakeSupported else {
             self.talkEnabled = false
@@ -620,14 +677,16 @@ final class AppState {
         await GatewayConnection.shared.talkMode(enabled: granted, phase: granted ? "enabled" : "denied")
     }
 
-    // MARK: - Global wake words sync (Gateway-owned)
+    // MARK: - 全局唤醒词同步（Gateway 拥有）
 
+    /// 应用全局语音唤醒触发词
     func applyGlobalVoiceWakeTriggers(_ triggers: [String]) {
         self.suppressVoiceWakeGlobalSync = true
         self.swabbleTriggerWords = triggers
         self.suppressVoiceWakeGlobalSync = false
     }
 
+    /// 调度语音唤醒全局同步（如果需要）
     private func scheduleVoiceWakeGlobalSyncIfNeeded() {
         guard !self.suppressVoiceWakeGlobalSync else { return }
         let sanitized = sanitizeVoiceWakeTriggers(self.swabbleTriggerWords)
@@ -638,12 +697,14 @@ final class AppState {
         }
     }
 
+    /// 设置工作状态
     func setWorking(_ working: Bool) {
         self.isWorking = working
     }
 
-    // MARK: - Chime persistence
+    // MARK: - 提示音持久化
 
+    /// 加载提示音
     private static func loadChime(key: String, fallback: VoiceWakeChime) -> VoiceWakeChime {
         guard let data = UserDefaults.standard.data(forKey: key) else { return fallback }
         if let decoded = try? JSONDecoder().decode(VoiceWakeChime.self, from: data) {
@@ -652,13 +713,16 @@ final class AppState {
         return fallback
     }
 
+    /// 存储提示音
     private func storeChime(_ chime: VoiceWakeChime, key: String) {
         guard let data = try? JSONEncoder().encode(chime) else { return }
         UserDefaults.standard.set(data, forKey: key)
     }
 }
 
-extension AppState {
+/// AppState 扩展
+ extension AppState {
+    /// 预览状态
     static var preview: AppState {
         let state = AppState(preview: true)
         state.isPaused = false
@@ -691,24 +755,29 @@ extension AppState {
     }
 }
 
+/// 应用状态存储
 @MainActor
 enum AppStateStore {
     static let shared = AppState()
     static var isPausedFlag: Bool { UserDefaults.standard.bool(forKey: pauseDefaultsKey) }
 
+    /// 更新开机自启动设置
     static func updateLaunchAtLogin(enabled: Bool) {
         Task.detached(priority: .utility) {
             await LaunchAgentManager.set(enabled: enabled, bundlePath: Bundle.main.bundlePath)
         }
     }
 
+    /// 画布启用状态
     static var canvasEnabled: Bool {
         UserDefaults.standard.object(forKey: canvasEnabledKey) as? Bool ?? true
     }
 }
 
+/// 应用激活策略
 @MainActor
 enum AppActivationPolicy {
+    /// 应用 Dock 图标显示设置
     static func apply(showDockIcon: Bool) {
         _ = showDockIcon
         DockIconManager.shared.updateDockVisibility()

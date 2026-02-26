@@ -40,10 +40,10 @@ struct GatewayAgentInvocation: Sendable {
     var idempotencyKey: String = UUID().uuidString
 }
 
-/// Single, shared Gateway websocket connection for the whole app.
+/// 整个应用程序使用的单一、共享的 Gateway WebSocket 连接。
 ///
-/// This owns exactly one `GatewayChannelActor` and reuses it across all callers
-/// (ControlChannel, debug actions, SwiftUI WebChat, etc.).
+/// 它拥有一个 `GatewayChannelActor` 并在所有调用者之间重用它
+///（ControlChannel、调试操作、SwiftUI WebChat 等）。
 actor GatewayConnection {
     static let shared = GatewayConnection()
 
@@ -113,7 +113,7 @@ actor GatewayConnection {
         self.sessionBox = sessionBox
     }
 
-    // MARK: - Low-level request
+    // MARK: - 底层请求
 
     func request(
         method: String,
@@ -133,8 +133,8 @@ actor GatewayConnection {
                 throw error
             }
 
-            // Auto-recover in local mode by spawning/attaching a gateway and retrying a few times.
-            // Canvas interactions should "just work" even if the local gateway isn't running yet.
+            // 在本地模式下自动恢复，通过生成/附加 gateway 并重试几次。
+            // 即使本地 gateway 尚未运行，Canvas 交互也应该"正常工作"。
             let mode = await MainActor.run { AppStateStore.shared.connectionMode }
             switch mode {
             case .local:
@@ -245,7 +245,7 @@ actor GatewayConnection {
         _ = try await self.requestRaw(method: method, params: params, timeoutMs: timeoutMs)
     }
 
-    /// Ensure the underlying socket is configured (and replaced if config changed).
+    /// 确保底层 socket 已配置（如果配置已更改则替换）。
     func refresh() async throws {
         let cfg = try await self.configProvider()
         await self.configure(url: cfg.url, token: cfg.token, password: cfg.password)
@@ -382,7 +382,7 @@ actor GatewayConnection {
     }
 }
 
-// MARK: - Typed gateway API
+// MARK: - 类型化的 Gateway API
 
 extension GatewayConnection {
     struct ConfigGetSnapshot: Decodable, Sendable {
@@ -489,7 +489,7 @@ extension GatewayConnection {
         do {
             try await self.requestVoid(method: .systemEvent, params: params)
         } catch {
-            // Best-effort only.
+            // 仅尽力而为。
         }
     }
 
@@ -648,7 +648,7 @@ extension GatewayConnection {
                 params: ["triggers": AnyCodable(triggers)],
                 timeoutMs: 10000)
         } catch {
-            // Best-effort only.
+            // 仅尽力而为。
         }
     }
 

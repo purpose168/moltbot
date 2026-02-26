@@ -1,11 +1,11 @@
-# Pre-commit hooks for clawdbot
-# Install: prek install
-# Run manually: prek run --all-files
+# clawdbot 的预提交钩子
+# 安装：prek install
+# 手动运行：prek run --all-files
 #
-# See https://pre-commit.com for more information
+# 参见 https://pre-commit.com 获取更多信息
 
 repos:
-  # Basic file hygiene
+  # 基本文件卫生
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -19,7 +19,7 @@ repos:
         args: [--maxkb=500]
       - id: check-merge-conflict
 
-  # Secret detection (same as CI)
+  # 密钥检测（与 CI 相同）
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
@@ -46,22 +46,22 @@ repos:
           - --exclude-lines
           - 'typeof remote\?\.password === "string"'
 
-  # Shell script linting
+  # Shell 脚本检查
   - repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.11.0
     hooks:
       - id: shellcheck
-        args: [--severity=error]  # Only fail on errors, not warnings/info
-        # Exclude vendor and scripts with embedded code or known issues
+        args: [--severity=error]  # 仅在错误时失败，不包括警告/信息
+        # 排除供应商和包含嵌入代码或已知问题的脚本
         exclude: '^(vendor/|scripts/e2e/)'
 
-  # GitHub Actions linting
+  # GitHub Actions 检查
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.10
     hooks:
       - id: actionlint
 
-  # GitHub Actions security audit
+  # GitHub Actions 安全审计
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
     rev: v1.22.0
     hooks:
@@ -69,7 +69,7 @@ repos:
         args: [--persona=regular, --min-severity=medium, --min-confidence=medium]
         exclude: '^(vendor/|Swabble/)'
 
-  # Project checks (same commands as CI)
+  # 项目检查（与 CI 相同的命令）
   - repo: local
     hooks:
       # oxlint --type-aware src test
@@ -88,7 +88,7 @@ repos:
         pass_filenames: false
         types_or: [javascript, jsx, ts, tsx]
 
-      # swiftlint (same as CI)
+      # swiftlint（与 CI 相同）
       - id: swiftlint
         name: swiftlint
         entry: swiftlint --config .swiftlint.yml
@@ -96,7 +96,7 @@ repos:
         pass_filenames: false
         types: [swift]
 
-      # swiftformat --lint (same as CI)
+      # swiftformat --lint（与 CI 相同）
       - id: swiftformat
         name: swiftformat
         entry: swiftformat --lint apps/macos/Sources --config .swiftformat

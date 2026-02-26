@@ -161,7 +161,7 @@ fun ChatComposer(
                 contentColor = Color(0xFFE74C3C),
               ),
           ) {
-            Icon(Icons.Default.Stop, contentDescription = "Abort")
+            Icon(Icons.Default.Stop, contentDescription = "中止") // Abort
           }
         } else {
           FilledTonalIconButton(onClick = {
@@ -169,7 +169,7 @@ fun ChatComposer(
             input = ""
             onSend(text)
           }, enabled = canSend) {
-            Icon(Icons.Default.ArrowUpward, contentDescription = "Send")
+            Icon(Icons.Default.ArrowUpward, contentDescription = "发送") // Send
           }
         }
       }

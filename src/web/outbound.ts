@@ -12,6 +12,18 @@ import { loadWebMedia } from "./media.js";
 
 const outboundLog = createSubsystemLogger("gateway/channels/whatsapp").child("outbound");
 
+/**
+ * 发送 WhatsApp 消息
+ *
+ * @param to 接收者（电话号码或 JID）
+ * @param body 消息内容
+ * @param options 发送选项
+ * @param options.verbose 是否启用详细日志
+ * @param options.mediaUrl 媒体文件 URL（可选）
+ * @param options.gifPlayback 是否启用 GIF 播放（可选）
+ * @param options.accountId 账户 ID（可选）
+ * @returns 包含消息 ID 和目标 JID 的对象
+ */
 export async function sendMessageWhatsApp(
   to: string,
   body: string,
@@ -63,8 +75,8 @@ export async function sendMessageWhatsApp(
         text = caption ?? "";
       }
     }
-    outboundLog.info(`Sending message -> ${jid}${options.mediaUrl ? " (media)" : ""}`);
-    logger.info({ jid, hasMedia: Boolean(options.mediaUrl) }, "sending message");
+    outboundLog.info(`正在发送消息 -> ${jid}${options.mediaUrl ? " (媒体)" : ""}`);
+    logger.info({ jid, hasMedia: Boolean(options.mediaUrl) }, "正在发送消息");
     await active.sendComposingTo(to);
     const hasExplicitAccountId = Boolean(options.accountId?.trim());
     const accountId = hasExplicitAccountId ? resolvedAccountId : undefined;
@@ -81,19 +93,31 @@ export async function sendMessageWhatsApp(
     const messageId = (result as { messageId?: string })?.messageId ?? "unknown";
     const durationMs = Date.now() - startedAt;
     outboundLog.info(
-      `Sent message ${messageId} -> ${jid}${options.mediaUrl ? " (media)" : ""} (${durationMs}ms)`,
+      `已发送消息 ${messageId} -> ${jid}${options.mediaUrl ? " (媒体)" : ""} (${durationMs}ms)`,
     );
-    logger.info({ jid, messageId }, "sent message");
+    logger.info({ jid, messageId }, "已发送消息");
     return { messageId, toJid: jid };
   } catch (err) {
     logger.error(
       { err: String(err), to, hasMedia: Boolean(options.mediaUrl) },
-      "failed to send via web session",
+      "通过 Web 会话发送失败",
     );
     throw err;
   }
 }
 
+/**
+ * 发送 WhatsApp 消息反应（表情）
+ *
+ * @param chatJid 聊天 JID
+ * @param messageId 消息 ID
+ * @param emoji 表情符号
+ * @param options 发送选项
+ * @param options.verbose 是否启用详细日志
+ * @param options.fromMe 是否来自当前用户（可选）
+ * @param options.participant 参与者（可选）
+ * @param options.accountId 账户 ID（可选）
+ */
 export async function sendReactionWhatsApp(
   chatJid: string,
   messageId: string,
@@ -115,8 +139,8 @@ export async function sendReactionWhatsApp(
   });
   try {
     const jid = toWhatsappJid(chatJid);
-    outboundLog.info(`Sending reaction "${emoji}" -> message ${messageId}`);
-    logger.info({ chatJid: jid, messageId, emoji }, "sending reaction");
+    outboundLog.info(`正在发送反应 "${emoji}" -> 消息 ${messageId}`);
+    logger.info({ chatJid: jid, messageId, emoji }, "正在发送反应");
     await active.sendReaction(
       chatJid,
       messageId,
@@ -124,17 +148,24 @@ export async function sendReactionWhatsApp(
       options.fromMe ?? false,
       options.participant,
     );
-    outboundLog.info(`Sent reaction "${emoji}" -> message ${messageId}`);
-    logger.info({ chatJid: jid, messageId, emoji }, "sent reaction");
+    outboundLog.info(`已发送反应 "${emoji}" -> 消息 ${messageId}`);
+    logger.info({ chatJid: jid, messageId, emoji }, "已发送反应");
   } catch (err) {
-    logger.error(
-      { err: String(err), chatJid, messageId, emoji },
-      "failed to send reaction via web session",
-    );
+    logger.error({ err: String(err), chatJid, messageId, emoji }, "通过 Web 会话发送反应失败");
     throw err;
   }
 }
 
+/**
+ * 发送 WhatsApp 投票消息
+ *
+ * @param to 接收者（电话号码或 JID）
+ * @param poll 投票信息
+ * @param options 发送选项
+ * @param options.verbose 是否启用详细日志
+ * @param options.accountId 账户 ID（可选）
+ * @returns 包含消息 ID 和目标 JID 的对象
+ */
 export async function sendPollWhatsApp(
   to: string,
   poll: PollInput,
@@ -151,7 +182,7 @@ export async function sendPollWhatsApp(
   try {
     const jid = toWhatsappJid(to);
     const normalized = normalizePollInput(poll, { maxOptions: 12 });
-    outboundLog.info(`Sending poll -> ${jid}: "${normalized.question}"`);
+    outboundLog.info(`正在发送投票 -> ${jid}: "${normalized.question}"`);
     logger.info(
       {
         jid,
@@ -159,19 +190,16 @@ export async function sendPollWhatsApp(
         optionCount: normalized.options.length,
         maxSelections: normalized.maxSelections,
       },
-      "sending poll",
+      "正在发送投票",
     );
     const result = await active.sendPoll(to, normalized);
     const messageId = (result as { messageId?: string })?.messageId ?? "unknown";
     const durationMs = Date.now() - startedAt;
-    outboundLog.info(`Sent poll ${messageId} -> ${jid} (${durationMs}ms)`);
-    logger.info({ jid, messageId }, "sent poll");
+    outboundLog.info(`已发送投票 ${messageId} -> ${jid} (${durationMs}ms)`);
+    logger.info({ jid, messageId }, "已发送投票");
     return { messageId, toJid: jid };
   } catch (err) {
-    logger.error(
-      { err: String(err), to, question: poll.question },
-      "failed to send poll via web session",
-    );
+    logger.error({ err: String(err), to, question: poll.question }, "通过 Web 会话发送投票失败");
     throw err;
   }
 }

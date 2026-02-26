@@ -1,7 +1,7 @@
 import Foundation
 
 public enum MoltbotBonjour {
-    // v0: internal-only, subject to rename.
+    // v0: 仅内部使用，可能会重命名。
     public static let gatewayServiceType = "_moltbot-gw._tcp"
     public static let gatewayServiceDomain = "local."
     public static let wideAreaGatewayServiceDomain = "moltbot.internal."

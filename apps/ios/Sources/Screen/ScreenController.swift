@@ -13,10 +13,10 @@ final class ScreenController {
     var urlString: String = ""
     var errorText: String?
 
-    /// Callback invoked when a moltbot:// deep link is tapped in the canvas
+    /// 当画布中点击 moltbot:// 深度链接时调用的回调
     var onDeepLink: ((URL) -> Void)?
 
-    /// Callback invoked when the user clicks an A2UI action (e.g. button) inside the canvas web UI.
+    /// 当用户点击画布 web UI 中的 A2UI 操作（例如按钮）时调用的回调
     var onA2UIAction: (([String: Any]) -> Void)?
 
     private var debugStatusEnabled: Bool = false
@@ -35,7 +35,7 @@ final class ScreenController {
         self.navigationDelegate = ScreenNavigationDelegate()
         self.a2uiActionHandler = a2uiActionHandler
         self.webView = WKWebView(frame: .zero, configuration: config)
-        // Canvas scaffold is a fully self-contained HTML page; avoid relying on transparency underlays.
+        // 画布脚手架是一个完全自包含的 HTML 页面；避免依赖透明覆盖层
         self.webView.isOpaque = true
         self.webView.backgroundColor = .black
         self.webView.scrollView.backgroundColor = .black
@@ -66,7 +66,7 @@ final class ScreenController {
             return
         } else {
             guard let url = URL(string: trimmed) else {
-                self.errorText = "Invalid URL: \(trimmed)"
+                self.errorText = "无效的 URL: \(trimmed)"
                 return
             }
             self.errorText = nil
@@ -131,7 +131,7 @@ final class ScreenController {
                 let trimmed = res.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
                 if trimmed == "true" || trimmed == "1" { return true }
             } catch {
-                // ignore; page likely still loading
+                // 忽略；页面可能仍在加载中
             }
             try? await Task.sleep(nanoseconds: 120_000_000)
         }
@@ -167,7 +167,7 @@ final class ScreenController {
                 }
                 guard let image else {
                     cont.resume(throwing: NSError(domain: "Screen", code: 2, userInfo: [
-                        NSLocalizedDescriptionKey: "snapshot failed",
+                        NSLocalizedDescriptionKey: "截图失败",
                     ]))
                     return
                 }
@@ -176,7 +176,7 @@ final class ScreenController {
         }
         guard let data = image.pngData() else {
             throw NSError(domain: "Screen", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "snapshot encode failed",
+                NSLocalizedDescriptionKey: "截图编码失败",
             ])
         }
         return data.base64EncodedString()
@@ -199,7 +199,7 @@ final class ScreenController {
                 }
                 guard let image else {
                     cont.resume(throwing: NSError(domain: "Screen", code: 2, userInfo: [
-                        NSLocalizedDescriptionKey: "snapshot failed",
+                        NSLocalizedDescriptionKey: "截图失败",
                     ]))
                     return
                 }
@@ -217,7 +217,7 @@ final class ScreenController {
         }
         guard let data else {
             throw NSError(domain: "Screen", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "snapshot encode failed",
+                NSLocalizedDescriptionKey: "截图编码失败",
             ])
         }
         return data.base64EncodedString()
@@ -253,7 +253,7 @@ final class ScreenController {
         let trimmed = self.urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         let allowScroll = !trimmed.isEmpty
         let scrollView = self.webView.scrollView
-        // Default canvas needs raw touch events; external pages should scroll.
+        // 默认画布需要原始触摸事件；外部页面应该可以滚动
         scrollView.isScrollEnabled = allowScroll
         scrollView.bounces = allowScroll
     }
@@ -280,7 +280,7 @@ final class ScreenController {
         if host.hasSuffix(".local") { return true }
         if host.hasSuffix(".ts.net") { return true }
         if host.hasSuffix(".tailscale.net") { return true }
-        // Allow MagicDNS / LAN hostnames like "peters-mac-studio-1".
+        // 允许 MagicDNS / LAN 主机名，如 "peters-mac-studio-1"
         if !host.contains("."), !host.contains(":") { return true }
         if let ipv4 = Self.parseIPv4(host) {
             return Self.isLocalNetworkIPv4(ipv4)
@@ -306,7 +306,7 @@ final class ScreenController {
         if a == 192, b == 168 { return true }
         // 127.0.0.0/8
         if a == 127 { return true }
-        // 169.254.0.0/16 (link-local)
+        // 169.254.0.0/16 (链路本地)
         if a == 169, b == 254 { return true }
         // Tailscale: 100.64.0.0/10
         if a == 100, (64...127).contains(Int(b)) { return true }
@@ -340,9 +340,9 @@ extension Double {
     }
 }
 
-// MARK: - Navigation Delegate
+// MARK: - 导航代理
 
-/// Handles navigation policy to intercept moltbot:// deep links from canvas
+/// 处理导航策略，拦截来自画布的 moltbot:// 深度链接
 @MainActor
 private final class ScreenNavigationDelegate: NSObject, WKNavigationDelegate {
     weak var controller: ScreenController?
@@ -357,7 +357,7 @@ private final class ScreenNavigationDelegate: NSObject, WKNavigationDelegate {
             return
         }
 
-        // Intercept moltbot:// deep links
+        // 拦截 moltbot:// 深度链接
         if url.scheme == "moltbot" {
             decisionHandler(.cancel)
             self.controller?.onDeepLink?(url)
@@ -400,7 +400,7 @@ private final class CanvasA2UIActionMessageHandler: NSObject, WKScriptMessageHan
         if url.isFileURL {
             guard controller.isTrustedCanvasUIURL(url) else { return }
         } else {
-            // For security, only accept actions from local-network pages (e.g. the canvas host).
+            // 为了安全，只接受来自本地网络页面的操作（例如画布主机）
             guard controller.isLocalNetworkCanvasURL(url) else { return }
         }
 

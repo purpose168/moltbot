@@ -3,29 +3,33 @@ import Observation
 import OSLog
 import SwiftUI
 
+/// 对话模式覆盖层控制器
+/// 管理对话模式覆盖层的显示、隐藏和状态更新
 @MainActor
 @Observable
 final class TalkOverlayController {
     static let shared = TalkOverlayController()
-    static let overlaySize: CGFloat = 440
-    static let orbSize: CGFloat = 96
-    static let orbPadding: CGFloat = 12
-    static let orbHitSlop: CGFloat = 10
+    static let overlaySize: CGFloat = 440      // 覆盖层大小
+    static let orbSize: CGFloat = 96          // 音频球大小
+    static let orbPadding: CGFloat = 12       // 音频球内边距
+    static let orbHitSlop: CGFloat = 10       // 音频球点击区域扩展
 
     private let logger = Logger(subsystem: "bot.molt", category: "talk.overlay")
 
+    /// 覆盖层模型数据
     struct Model {
-        var isVisible: Bool = false
-        var phase: TalkModePhase = .idle
-        var isPaused: Bool = false
-        var level: Double = 0
+        var isVisible: Bool = false           // 是否可见
+        var phase: TalkModePhase = .idle      // 当前阶段
+        var isPaused: Bool = false            // 是否暂停
+        var level: Double = 0                 // 音频级别
     }
 
     var model = Model()
-    private var window: NSPanel?
-    private var hostingView: NSHostingView<TalkOverlayView>?
-    private let screenInset: CGFloat = 0
+    private var window: NSPanel?              // 面板窗口
+    private var hostingView: NSHostingView<TalkOverlayView>?  // 托管视图
+    private let screenInset: CGFloat = 0       // 屏幕边距
 
+    /// 显示覆盖层
     func present() {
         self.ensureWindow()
         self.hostingView?.rootView = TalkOverlayView(controller: self)
@@ -50,6 +54,7 @@ final class TalkOverlayController {
         }
     }
 
+    /// 隐藏覆盖层
     func dismiss() {
         guard let window else {
             self.model.isVisible = false
@@ -70,27 +75,32 @@ final class TalkOverlayController {
         }
     }
 
+    /// 更新对话阶段
     func updatePhase(_ phase: TalkModePhase) {
         guard self.model.phase != phase else { return }
         self.logger.info("talk overlay phase=\(phase.rawValue, privacy: .public)")
         self.model.phase = phase
     }
 
+    /// 更新暂停状态
     func updatePaused(_ paused: Bool) {
         guard self.model.isPaused != paused else { return }
         self.logger.info("talk overlay paused=\(paused)")
         self.model.isPaused = paused
     }
 
+    /// 更新音频级别
     func updateLevel(_ level: Double) {
         guard self.model.isVisible else { return }
         self.model.level = max(0, min(1, level))
     }
 
+    /// 获取当前窗口原点
     func currentWindowOrigin() -> CGPoint? {
         self.window?.frame.origin
     }
 
+    /// 设置窗口原点
     func setWindowOrigin(_ origin: CGPoint) {
         guard let window else { return }
         window.setFrameOrigin(origin)
@@ -98,6 +108,7 @@ final class TalkOverlayController {
 
     // MARK: - Private
 
+    /// 确保窗口已创建
     private func ensureWindow() {
         if self.window != nil { return }
         let panel = NSPanel(
@@ -125,6 +136,7 @@ final class TalkOverlayController {
         self.window = panel
     }
 
+    /// 计算目标窗口框架
     private func targetFrame() -> NSRect {
         let screen = self.window?.screen
             ?? NSScreen.main
@@ -139,6 +151,8 @@ final class TalkOverlayController {
     }
 }
 
+/// 对话模式覆盖层托管视图
+/// 允许首次鼠标点击事件
 private final class TalkOverlayHostingView: NSHostingView<TalkOverlayView> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
         true

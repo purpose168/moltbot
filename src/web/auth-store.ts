@@ -11,20 +11,40 @@ import { formatCliCommand } from "../cli/command-format.js";
 import type { WebChannel } from "../utils.js";
 import { jidToE164, resolveUserPath } from "../utils.js";
 
+/**
+ * 解析默认的 Web 认证目录
+ * @returns 认证目录路径
+ */
 export function resolveDefaultWebAuthDir(): string {
   return path.join(resolveOAuthDir(), "whatsapp", DEFAULT_ACCOUNT_ID);
 }
 
+/** 默认的 WhatsApp Web 认证目录 */
 export const WA_WEB_AUTH_DIR = resolveDefaultWebAuthDir();
 
+/**
+ * 解析 Web 凭证路径
+ * @param authDir - 认证目录
+ * @returns 凭证文件路径
+ */
 export function resolveWebCredsPath(authDir: string): string {
   return path.join(authDir, "creds.json");
 }
 
+/**
+ * 解析 Web 凭证备份路径
+ * @param authDir - 认证目录
+ * @returns 凭证备份文件路径
+ */
 export function resolveWebCredsBackupPath(authDir: string): string {
   return path.join(authDir, "creds.json.bak");
 }
 
+/**
+ * 同步检查是否存在 Web 凭证
+ * @param authDir - 认证目录
+ * @returns 是否存在有效的凭证
+ */
 export function hasWebCredsSync(authDir: string): boolean {
   try {
     const stats = fsSync.statSync(resolveWebCredsPath(authDir));
@@ -34,6 +54,11 @@ export function hasWebCredsSync(authDir: string): boolean {
   }
 }
 
+/**
+ * 读取凭证 JSON 原始内容
+ * @param filePath - 文件路径
+ * @returns 原始 JSON 字符串或 null
+ */
 function readCredsJsonRaw(filePath: string): string | null {
   try {
     if (!fsSync.existsSync(filePath)) return null;
@@ -45,6 +70,10 @@ function readCredsJsonRaw(filePath: string): string | null {
   }
 }
 
+/**
+ * 尝试从备份恢复凭证
+ * @param authDir - 认证目录
+ */
 export function maybeRestoreCredsFromBackup(authDir: string): void {
   const logger = getChildLogger({ module: "web-session" });
   try {
@@ -52,7 +81,7 @@ export function maybeRestoreCredsFromBackup(authDir: string): void {
     const backupPath = resolveWebCredsBackupPath(authDir);
     const raw = readCredsJsonRaw(credsPath);
     if (raw) {
-      // Validate that creds.json is parseable.
+      // 验证 creds.json 是否可解析
       JSON.parse(raw);
       return;
     }
@@ -60,15 +89,20 @@ export function maybeRestoreCredsFromBackup(authDir: string): void {
     const backupRaw = readCredsJsonRaw(backupPath);
     if (!backupRaw) return;
 
-    // Ensure backup is parseable before restoring.
+    // 确保备份可解析后再恢复
     JSON.parse(backupRaw);
     fsSync.copyFileSync(backupPath, credsPath);
     logger.warn({ credsPath }, "restored corrupted WhatsApp creds.json from backup");
   } catch {
-    // ignore
+    // 忽略错误
   }
 }
 
+/**
+ * 检查 Web 认证是否存在
+ * @param authDir - 认证目录
+ * @returns 是否存在有效的认证
+ */
 export async function webAuthExists(authDir: string = resolveDefaultWebAuthDir()) {
   const resolvedAuthDir = resolveUserPath(authDir);
   maybeRestoreCredsFromBackup(resolvedAuthDir);
@@ -89,6 +123,10 @@ export async function webAuthExists(authDir: string = resolveDefaultWebAuthDir()
   }
 }
 
+/**
+ * 清除旧版 Baileys 认证状态
+ * @param authDir - 认证目录
+ */
 async function clearLegacyBaileysAuthState(authDir: string) {
   const entries = await fs.readdir(authDir, { withFileTypes: true });
   const shouldDelete = (name: string) => {
@@ -106,6 +144,14 @@ async function clearLegacyBaileysAuthState(authDir: string) {
   );
 }
 
+/**
+ * 登出 WhatsApp Web
+ * @param params - 登出参数
+ * @param params.authDir - 认证目录
+ * @param params.isLegacyAuthDir - 是否为旧版认证目录
+ * @param params.runtime - 运行时环境
+ * @returns 是否成功登出
+ */
 export async function logoutWeb(params: {
   authDir?: string;
   isLegacyAuthDir?: boolean;
@@ -127,8 +173,13 @@ export async function logoutWeb(params: {
   return true;
 }
 
+/**
+ * 读取 Web 自身 ID
+ * @param authDir - 认证目录
+ * @returns 自身 ID 信息
+ */
 export function readWebSelfId(authDir: string = resolveDefaultWebAuthDir()) {
-  // Read the cached WhatsApp Web identity (jid + E.164) from disk if present.
+  // 从磁盘读取缓存的 WhatsApp Web 身份（jid + E.164）
   try {
     const credsPath = resolveWebCredsPath(resolveUserPath(authDir));
     if (!fsSync.existsSync(credsPath)) {
@@ -145,8 +196,8 @@ export function readWebSelfId(authDir: string = resolveDefaultWebAuthDir()) {
 }
 
 /**
- * Return the age (in milliseconds) of the cached WhatsApp web auth state, or null when missing.
- * Helpful for heartbeats/observability to spot stale credentials.
+ * 返回缓存的 WhatsApp Web 认证状态的年龄（以毫秒为单位），如果缺失则返回 null。
+ * 有助于心跳/可观察性来发现过期的凭证。
  */
 export function getWebAuthAgeMs(authDir: string = resolveDefaultWebAuthDir()): number | null {
   try {
@@ -157,18 +208,30 @@ export function getWebAuthAgeMs(authDir: string = resolveDefaultWebAuthDir()): n
   }
 }
 
+/**
+ * 记录 Web 自身 ID
+ * @param authDir - 认证目录
+ * @param runtime - 运行时环境
+ * @param includeChannelPrefix - 是否包含通道前缀
+ */
 export function logWebSelfId(
   authDir: string = resolveDefaultWebAuthDir(),
   runtime: RuntimeEnv = defaultRuntime,
   includeChannelPrefix = false,
 ) {
-  // Human-friendly log of the currently linked personal web session.
+  // 人性化日志记录当前链接的个人 Web 会话
   const { e164, jid } = readWebSelfId(authDir);
   const details = e164 || jid ? `${e164 ?? "unknown"}${jid ? ` (jid ${jid})` : ""}` : "unknown";
   const prefix = includeChannelPrefix ? "Web Channel: " : "";
   runtime.log(info(`${prefix}${details}`));
 }
 
+/**
+ * 选择 Web 通道
+ * @param pref - 首选通道
+ * @param authDir - 认证目录
+ * @returns 选择的通道
+ */
 export async function pickWebChannel(
   pref: WebChannel | "auto",
   authDir: string = resolveDefaultWebAuthDir(),

@@ -3,6 +3,7 @@ import Foundation
 import OSLog
 import Security
 
+/// 执行安全级别
 enum ExecSecurity: String, CaseIterable, Codable, Identifiable {
     case deny
     case allowlist
@@ -10,15 +11,17 @@ enum ExecSecurity: String, CaseIterable, Codable, Identifiable {
 
     var id: String { self.rawValue }
 
+    /// 标题
     var title: String {
         switch self {
-        case .deny: "Deny"
-        case .allowlist: "Allowlist"
-        case .full: "Always Allow"
+        case .deny: "拒绝"
+        case .allowlist: "允许列表"
+        case .full: "始终允许"
         }
     }
 }
 
+/// 执行批准快速模式
 enum ExecApprovalQuickMode: String, CaseIterable, Identifiable {
     case deny
     case ask
@@ -26,14 +29,16 @@ enum ExecApprovalQuickMode: String, CaseIterable, Identifiable {
 
     var id: String { self.rawValue }
 
+    /// 标题
     var title: String {
         switch self {
-        case .deny: "Deny"
-        case .ask: "Always Ask"
-        case .allow: "Always Allow"
+        case .deny: "拒绝"
+        case .ask: "始终询问"
+        case .allow: "始终允许"
         }
     }
 
+    /// 安全级别
     var security: ExecSecurity {
         switch self {
         case .deny: .deny
@@ -42,6 +47,7 @@ enum ExecApprovalQuickMode: String, CaseIterable, Identifiable {
         }
     }
 
+    /// 询问模式
     var ask: ExecAsk {
         switch self {
         case .deny: .off
@@ -50,6 +56,7 @@ enum ExecApprovalQuickMode: String, CaseIterable, Identifiable {
         }
     }
 
+    /// 从安全级别和询问模式创建快速模式
     static func from(security: ExecSecurity, ask: ExecAsk) -> ExecApprovalQuickMode {
         switch security {
         case .deny:
@@ -62,6 +69,7 @@ enum ExecApprovalQuickMode: String, CaseIterable, Identifiable {
     }
 }
 
+/// 执行询问模式
 enum ExecAsk: String, CaseIterable, Codable, Identifiable {
     case off
     case onMiss = "on-miss"
@@ -69,21 +77,24 @@ enum ExecAsk: String, CaseIterable, Codable, Identifiable {
 
     var id: String { self.rawValue }
 
+    /// 标题
     var title: String {
         switch self {
-        case .off: "Never Ask"
-        case .onMiss: "Ask on Allowlist Miss"
-        case .always: "Always Ask"
+        case .off: "从不询问"
+        case .onMiss: "允许列表未命中时询问"
+        case .always: "始终询问"
         }
     }
 }
 
+/// 执行批准决策
 enum ExecApprovalDecision: String, Codable, Sendable {
     case allowOnce = "allow-once"
     case allowAlways = "allow-always"
     case deny
 }
 
+/// 执行允许列表条目
 struct ExecAllowlistEntry: Codable, Hashable, Identifiable {
     var id: UUID
     var pattern: String
@@ -132,6 +143,7 @@ struct ExecAllowlistEntry: Codable, Hashable, Identifiable {
     }
 }
 
+/// 执行批准默认设置
 struct ExecApprovalsDefaults: Codable {
     var security: ExecSecurity?
     var ask: ExecAsk?
@@ -139,6 +151,7 @@ struct ExecApprovalsDefaults: Codable {
     var autoAllowSkills: Bool?
 }
 
+/// 执行批准代理设置
 struct ExecApprovalsAgent: Codable {
     var security: ExecSecurity?
     var ask: ExecAsk?
@@ -146,17 +159,20 @@ struct ExecApprovalsAgent: Codable {
     var autoAllowSkills: Bool?
     var allowlist: [ExecAllowlistEntry]?
 
+    /// 是否为空
     var isEmpty: Bool {
         self.security == nil && self.ask == nil && self.askFallback == nil && self
             .autoAllowSkills == nil && (self.allowlist?.isEmpty ?? true)
     }
 }
 
+/// 执行批准套接字配置
 struct ExecApprovalsSocketConfig: Codable {
     var path: String?
     var token: String?
 }
 
+/// 执行批准文件
 struct ExecApprovalsFile: Codable {
     var version: Int
     var socket: ExecApprovalsSocketConfig?
@@ -164,6 +180,7 @@ struct ExecApprovalsFile: Codable {
     var agents: [String: ExecApprovalsAgent]?
 }
 
+/// 执行批准快照
 struct ExecApprovalsSnapshot: Codable {
     var path: String
     var exists: Bool
@@ -171,6 +188,7 @@ struct ExecApprovalsSnapshot: Codable {
     var file: ExecApprovalsFile
 }
 
+/// 执行批准解析结果
 struct ExecApprovalsResolved {
     let url: URL
     let socketPath: String
@@ -181,6 +199,7 @@ struct ExecApprovalsResolved {
     var file: ExecApprovalsFile
 }
 
+/// 执行批准解析的默认设置
 struct ExecApprovalsResolvedDefaults {
     var security: ExecSecurity
     var ask: ExecAsk
@@ -188,6 +207,7 @@ struct ExecApprovalsResolvedDefaults {
     var autoAllowSkills: Bool
 }
 
+/// 执行批准存储
 enum ExecApprovalsStore {
     private static let logger = Logger(subsystem: "bot.molt", category: "exec-approvals")
     private static let defaultAgentId = "main"
@@ -196,14 +216,17 @@ enum ExecApprovalsStore {
     private static let defaultAskFallback: ExecSecurity = .deny
     private static let defaultAutoAllowSkills = false
 
+    /// 获取文件URL
     static func fileURL() -> URL {
         MoltbotPaths.stateDirURL.appendingPathComponent("exec-approvals.json")
     }
 
+    /// 获取套接字路径
     static func socketPath() -> String {
         MoltbotPaths.stateDirURL.appendingPathComponent("exec-approvals.sock").path
     }
 
+    /// 规范化传入的文件
     static func normalizeIncoming(_ file: ExecApprovalsFile) -> ExecApprovalsFile {
         let socketPath = file.socket?.path?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let token = file.socket?.token?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -225,6 +248,7 @@ enum ExecApprovalsStore {
             agents: agents)
     }
 
+    /// 读取快照
     static func readSnapshot() -> ExecApprovalsSnapshot {
         let url = self.fileURL()
         guard FileManager().fileExists(atPath: url.path) else {
@@ -249,6 +273,7 @@ enum ExecApprovalsStore {
             file: decoded)
     }
 
+    /// 为快照脱敏
     static func redactForSnapshot(_ file: ExecApprovalsFile) -> ExecApprovalsFile {
         let socketPath = file.socket?.path?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if socketPath.isEmpty {
@@ -265,6 +290,7 @@ enum ExecApprovalsStore {
             agents: file.agents)
     }
 
+    /// 加载文件
     static func loadFile() -> ExecApprovalsFile {
         let url = self.fileURL()
         guard FileManager().fileExists(atPath: url.path) else {
@@ -283,6 +309,7 @@ enum ExecApprovalsStore {
         }
     }
 
+    /// 保存文件
     static func saveFile(_ file: ExecApprovalsFile) {
         do {
             let encoder = JSONEncoder()
@@ -299,6 +326,7 @@ enum ExecApprovalsStore {
         }
     }
 
+    /// 确保文件存在
     static func ensureFile() -> ExecApprovalsFile {
         var file = self.loadFile()
         if file.socket == nil { file.socket = ExecApprovalsSocketConfig(path: nil, token: nil) }
@@ -315,6 +343,7 @@ enum ExecApprovalsStore {
         return file
     }
 
+    /// 解析代理设置
     static func resolve(agentId: String?) -> ExecApprovalsResolved {
         let file = self.ensureFile()
         let defaults = file.defaults ?? ExecApprovalsDefaults()
@@ -355,6 +384,7 @@ enum ExecApprovalsStore {
             file: file)
     }
 
+    /// 解析默认设置
     static func resolveDefaults() -> ExecApprovalsResolvedDefaults {
         let file = self.ensureFile()
         let defaults = file.defaults ?? ExecApprovalsDefaults()
@@ -365,12 +395,14 @@ enum ExecApprovalsStore {
             autoAllowSkills: defaults.autoAllowSkills ?? self.defaultAutoAllowSkills)
     }
 
+    /// 保存默认设置
     static func saveDefaults(_ defaults: ExecApprovalsDefaults) {
         self.updateFile { file in
             file.defaults = defaults
         }
     }
 
+    /// 更新默认设置
     static func updateDefaults(_ mutate: (inout ExecApprovalsDefaults) -> Void) {
         self.updateFile { file in
             var defaults = file.defaults ?? ExecApprovalsDefaults()
@@ -379,6 +411,7 @@ enum ExecApprovalsStore {
         }
     }
 
+    /// 保存代理设置
     static func saveAgent(_ agent: ExecApprovalsAgent, agentId: String?) {
         self.updateFile { file in
             var agents = file.agents ?? [:]
@@ -392,6 +425,7 @@ enum ExecApprovalsStore {
         }
     }
 
+    /// 添加允许列表条目
     static func addAllowlistEntry(agentId: String?, pattern: String) {
         let trimmed = pattern.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -408,6 +442,7 @@ enum ExecApprovalsStore {
         }
     }
 
+    /// 记录允许列表使用
     static func recordAllowlistUse(
         agentId: String?,
         pattern: String,
@@ -433,6 +468,7 @@ enum ExecApprovalsStore {
         }
     }
 
+    /// 更新允许列表
     static func updateAllowlist(agentId: String?, allowlist: [ExecAllowlistEntry]) {
         self.updateFile { file in
             let key = self.agentKey(agentId)
@@ -454,6 +490,7 @@ enum ExecApprovalsStore {
         }
     }
 
+    /// 更新代理设置
     static func updateAgentSettings(agentId: String?, mutate: (inout ExecApprovalsAgent) -> Void) {
         self.updateFile { file in
             let key = self.agentKey(agentId)
@@ -469,12 +506,14 @@ enum ExecApprovalsStore {
         }
     }
 
+    /// 更新文件
     private static func updateFile(_ mutate: (inout ExecApprovalsFile) -> Void) {
         var file = self.ensureFile()
         mutate(&file)
         self.saveFile(file)
     }
 
+    /// 生成令牌
     private static func generateToken() -> String {
         var bytes = [UInt8](repeating: 0, count: 24)
         let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
@@ -488,12 +527,14 @@ enum ExecApprovalsStore {
         return UUID().uuidString
     }
 
+    /// 计算原始字符串的哈希
     private static func hashRaw(_ raw: String?) -> String {
         let data = Data((raw ?? "").utf8)
         let digest = SHA256.hash(data: data)
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 
+    /// 展开路径
     private static func expandPath(_ raw: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed == "~" {
@@ -507,16 +548,19 @@ enum ExecApprovalsStore {
         return trimmed
     }
 
+    /// 获取代理键
     private static func agentKey(_ agentId: String?) -> String {
         let trimmed = agentId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? self.defaultAgentId : trimmed
     }
 
+    /// 规范化模式
     private static func normalizedPattern(_ pattern: String?) -> String? {
         let trimmed = pattern?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? nil : trimmed.lowercased()
     }
 
+    /// 合并代理设置
     private static func mergeAgents(
         current: ExecApprovalsAgent,
         legacy: ExecApprovalsAgent) -> ExecApprovalsAgent
@@ -546,12 +590,14 @@ enum ExecApprovalsStore {
     }
 }
 
+/// 执行命令解析结果
 struct ExecCommandResolution: Sendable {
     let rawExecutable: String
     let resolvedPath: String?
     let executableName: String
     let cwd: String?
 
+    /// 解析命令
     static func resolve(
         command: [String],
         rawCommand: String?,
@@ -565,6 +611,7 @@ struct ExecCommandResolution: Sendable {
         return self.resolve(command: command, cwd: cwd, env: env)
     }
 
+    /// 解析命令数组
     static func resolve(command: [String], cwd: String?, env: [String: String]?) -> ExecCommandResolution? {
         guard let raw = command.first?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
             return nil
@@ -572,6 +619,7 @@ struct ExecCommandResolution: Sendable {
         return self.resolveExecutable(rawExecutable: raw, cwd: cwd, env: env)
     }
 
+    /// 解析可执行文件
     private static func resolveExecutable(
         rawExecutable: String,
         cwd: String?,
@@ -599,6 +647,7 @@ struct ExecCommandResolution: Sendable {
             cwd: cwd)
     }
 
+    /// 解析第一个标记
     private static func parseFirstToken(_ command: String) -> String? {
         let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
@@ -613,6 +662,7 @@ struct ExecCommandResolution: Sendable {
         return trimmed.split(whereSeparator: { $0.isWhitespace }).first.map(String.init)
     }
 
+    /// 从环境变量获取搜索路径
     private static func searchPaths(from env: [String: String]?) -> [String] {
         let raw = env?["PATH"]
         if let raw, !raw.isEmpty {
@@ -622,7 +672,9 @@ struct ExecCommandResolution: Sendable {
     }
 }
 
+/// 执行命令格式化器
 enum ExecCommandFormatter {
+    /// 获取显示字符串
     static func displayString(for argv: [String]) -> String {
         argv.map { arg in
             let trimmed = arg.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -634,6 +686,7 @@ enum ExecCommandFormatter {
         }.joined(separator: " ")
     }
 
+    /// 获取显示字符串(带原始命令)
     static func displayString(for argv: [String], rawCommand: String?) -> String {
         let trimmed = rawCommand?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !trimmed.isEmpty { return trimmed }
@@ -641,13 +694,16 @@ enum ExecCommandFormatter {
     }
 }
 
+/// 执行批准辅助工具
 enum ExecApprovalHelpers {
+    /// 解析决策
     static func parseDecision(_ raw: String?) -> ExecApprovalDecision? {
         let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !trimmed.isEmpty else { return nil }
         return ExecApprovalDecision(rawValue: trimmed)
     }
 
+    /// 是否需要询问
     static func requiresAsk(
         ask: ExecAsk,
         security: ExecSecurity,
@@ -659,13 +715,16 @@ enum ExecApprovalHelpers {
         return false
     }
 
+    /// 获取允许列表模式
     static func allowlistPattern(command: [String], resolution: ExecCommandResolution?) -> String? {
         let pattern = resolution?.resolvedPath ?? resolution?.rawExecutable ?? command.first ?? ""
         return pattern.isEmpty ? nil : pattern
     }
 }
 
+/// 执行允许列表匹配器
 enum ExecAllowlistMatcher {
+    /// 匹配条目
     static func match(entries: [ExecAllowlistEntry], resolution: ExecCommandResolution?) -> ExecAllowlistEntry? {
         guard let resolution, !entries.isEmpty else { return nil }
         let rawExecutable = resolution.rawExecutable
@@ -686,6 +745,7 @@ enum ExecAllowlistMatcher {
         return nil
     }
 
+    /// 匹配模式和目标
     private static func matches(pattern: String, target: String) -> Bool {
         let trimmed = pattern.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
@@ -697,10 +757,12 @@ enum ExecAllowlistMatcher {
         return regex.firstMatch(in: normalizedTarget, options: [], range: range) != nil
     }
 
+    /// 规范化匹配目标
     private static func normalizeMatchTarget(_ value: String) -> String {
         value.replacingOccurrences(of: "\\\\", with: "/").lowercased()
     }
 
+    /// 创建正则表达式
     private static func regex(for pattern: String) -> NSRegularExpression? {
         var regex = "^"
         var idx = pattern.startIndex
@@ -730,6 +792,7 @@ enum ExecAllowlistMatcher {
     }
 }
 
+/// 执行事件负载
 struct ExecEventPayload: Codable, Sendable {
     var sessionKey: String
     var runId: String
@@ -741,6 +804,7 @@ struct ExecEventPayload: Codable, Sendable {
     var output: String?
     var reason: String?
 
+    /// 截断输出
     static func truncateOutput(_ raw: String, maxChars: Int = 20000) -> String? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
@@ -750,6 +814,7 @@ struct ExecEventPayload: Codable, Sendable {
     }
 }
 
+/// 技能二进制文件缓存
 actor SkillBinsCache {
     static let shared = SkillBinsCache()
 
@@ -757,6 +822,7 @@ actor SkillBinsCache {
     private var lastRefresh: Date?
     private let refreshInterval: TimeInterval = 90
 
+    /// 获取当前二进制文件集合
     func currentBins(force: Bool = false) async -> Set<String> {
         if force || self.isStale() {
             await self.refresh()
@@ -764,6 +830,7 @@ actor SkillBinsCache {
         return self.bins
     }
 
+    /// 刷新缓存
     func refresh() async {
         do {
             let report = try await GatewayConnection.shared.skillsStatus()
@@ -783,6 +850,7 @@ actor SkillBinsCache {
         }
     }
 
+    /// 检查是否过期
     private func isStale() -> Bool {
         guard let lastRefresh else { return true }
         return Date().timeIntervalSince(lastRefresh) > self.refreshInterval

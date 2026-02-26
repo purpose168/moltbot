@@ -4,30 +4,56 @@ import Foundation
 import Observation
 import SwiftUI
 
+/// 控制心跳事件
+/// 
+/// 表示控制通道的心跳事件
 struct ControlHeartbeatEvent: Codable {
+    /// 时间戳
     let ts: Double
+    /// 状态
     let status: String
+    /// 目标
     let to: String?
+    /// 预览
     let preview: String?
+    /// 持续时间（毫秒）
     let durationMs: Double?
+    /// 是否有媒体
     let hasMedia: Bool?
+    /// 原因
     let reason: String?
 }
 
+/// 控制代理事件
+/// 
+/// 表示控制通道的代理事件
 struct ControlAgentEvent: Codable, Sendable, Identifiable {
+    /// 标识符
     var id: String { "\(self.runId)-\(self.seq)" }
+    /// 运行ID
     let runId: String
+    /// 序列
     let seq: Int
+    /// 流
     let stream: String
+    /// 时间戳
     let ts: Double
+    /// 数据
     let data: [String: MoltbotProtocol.AnyCodable]
+    /// 摘要
     let summary: String?
 }
 
+/// 控制通道错误
+/// 
+/// 表示控制通道的错误
 enum ControlChannelError: Error, LocalizedError {
+    /// 断开连接
     case disconnected
+    /// 错误响应
     case badResponse(String)
 
+    /// 错误描述
     var errorDescription: String? {
         switch self {
         case .disconnected: "Control channel disconnected"
@@ -36,23 +62,36 @@ enum ControlChannelError: Error, LocalizedError {
     }
 }
 
+/// 控制通道
+/// 
+/// 用于管理与网关的控制通道连接
 @MainActor
 @Observable
 final class ControlChannel {
+    /// 共享实例
     static let shared = ControlChannel()
 
+    /// 控制通道模式
     enum Mode {
+        /// 本地模式
         case local
+        /// 远程模式
         case remote(target: String, identity: String)
     }
 
+    /// 连接状态
     enum ConnectionState: Equatable {
+        /// 断开连接
         case disconnected
+        /// 正在连接
         case connecting
+        /// 已连接
         case connected
+        /// 降级状态
         case degraded(String)
     }
 
+    /// 连接状态
     private(set) var state: ConnectionState = .disconnected {
         didSet {
             CanvasManager.shared.refreshDebugStatus()
@@ -73,24 +112,34 @@ final class ControlChannel {
         }
     }
 
+    /// 上次ping的时间（毫秒）
     private(set) var lastPingMs: Double?
+    /// 认证源标签
     private(set) var authSourceLabel: String?
 
+    /// 日志记录器
     private let logger = Logger(subsystem: "bot.molt", category: "control")
 
+    /// 事件任务
     private var eventTask: Task<Void, Never>?
+    /// 恢复任务
     private var recoveryTask: Task<Void, Never>?
+    /// 上次恢复时间
     private var lastRecoveryAt: Date?
 
+    /// 初始化控制通道
     private init() {
         self.startEventStream()
     }
 
+    /// 配置控制通道
     func configure() async {
         self.logger.info("control channel configure mode=local")
         await self.refreshEndpoint(reason: "configure")
     }
 
+    /// 配置控制通道
+    /// - Parameter mode: 控制通道模式，默认为本地模式
     func configure(mode: Mode = .local) async throws {
         switch mode {
         case .local:
@@ -112,6 +161,8 @@ final class ControlChannel {
         }
     }
 
+    /// 刷新端点
+    /// - Parameter reason: 刷新原因
     func refreshEndpoint(reason: String) async {
         self.logger.info("control channel refresh endpoint reason=\(reason, privacy: .public)")
         self.state = .connecting
@@ -125,6 +176,7 @@ final class ControlChannel {
         }
     }
 
+    /// 断开连接
     func disconnect() async {
         await GatewayConnection.shared.shutdown()
         self.state = .disconnected
@@ -132,6 +184,9 @@ final class ControlChannel {
         self.authSourceLabel = nil
     }
 
+    /// 检查健康状态
+    /// - Parameter timeout: 超时时间，可选
+    /// - Returns: 健康状态数据
     func health(timeout: TimeInterval? = nil) async throws -> Data {
         do {
             let start = Date()
@@ -152,11 +207,19 @@ final class ControlChannel {
         }
     }
 
+    /// 获取上次心跳
+    /// - Returns: 控制心跳事件，可选
     func lastHeartbeat() async throws -> ControlHeartbeatEvent? {
         let data = try await self.request(method: "last-heartbeat")
         return try JSONDecoder().decode(ControlHeartbeatEvent?.self, from: data)
     }
 
+    /// 发送请求
+    /// - Parameters:
+    ///   - method: 请求方法
+    ///   - params: 请求参数，可选
+    ///   - timeoutMs: 超时时间（毫秒），可选
+    /// - Returns: 请求响应数据
     func request(
         method: String,
         params: [String: AnyHashable]? = nil,
@@ -179,15 +242,18 @@ final class ControlChannel {
         }
     }
 
+    /// 获取友好的网关错误消息
+    /// - Parameter error: 错误
+    /// - Returns: 友好的错误消息
     private func friendlyGatewayMessage(_ error: Error) -> String {
-        // Map URLSession/WS errors into user-facing, actionable text.
+        // 将URLSession/WS错误映射为用户友好的可操作文本
         if let ctrlErr = error as? ControlChannelError, let desc = ctrlErr.errorDescription {
             return desc
         }
 
-        // If the gateway explicitly rejects the hello (e.g., auth/token mismatch), surface it.
+        // 如果网关明确拒绝hello（例如，认证/令牌不匹配），显示它
         if let urlErr = error as? URLError,
-           urlErr.code == .dataNotAllowed // used for WS close 1008 auth failures
+           urlErr.code == .dataNotAllowed // 用于WS关闭1008认证失败
         {
             let reason = urlErr.failureURLString ?? urlErr.localizedDescription
             let tokenKey = CommandResolver.connectionModeIsRemote()
@@ -199,11 +265,10 @@ final class ControlChannel {
                 "Reason: \(reason)"
         }
 
-        // Common misfire: we connected to the configured localhost port but it is occupied
-        // by some other process (e.g. a local dev gateway or a stuck SSH forward).
-        // The gateway handshake returns something we can't parse, which currently
-        // surfaces as "hello failed (unexpected response)". Give the user a pointer
-        // to free the port instead of a vague message.
+        // 常见错误：我们连接到配置的本地端口，但它被其他进程占用
+        // （例如，本地开发网关或卡住的SSH转发）
+        // 网关握手返回我们无法解析的内容，目前显示为"hello failed (unexpected response)"
+        // 给用户一个指针来释放端口，而不是一个模糊的消息
         let nsError = error as NSError
         if nsError.domain == "Gateway",
            nsError.localizedDescription.contains("hello failed (unexpected response)")
@@ -252,6 +317,8 @@ final class ControlChannel {
         return "Gateway error: \(trimmed)"
     }
 
+    /// 安排恢复
+    /// - Parameter reason: 恢复原因
     private func scheduleRecovery(reason: String) {
         let now = Date()
         if let last = self.lastRecoveryAt, now.timeIntervalSince(last) < 10 { return }
@@ -296,6 +363,8 @@ final class ControlChannel {
         }
     }
 
+    /// 建立网关连接
+    /// - Parameter timeoutMs: 超时时间（毫秒），默认为5000
     private func establishGatewayConnection(timeoutMs: Int = 5000) async throws {
         try await GatewayConnection.shared.refresh()
         let ok = try await GatewayConnection.shared.healthOK(timeoutMs: timeoutMs)
@@ -308,12 +377,18 @@ final class ControlChannel {
         await self.refreshAuthSourceLabel()
     }
 
+    /// 刷新认证源标签
     private func refreshAuthSourceLabel() async {
         let isRemote = CommandResolver.connectionModeIsRemote()
         let authSource = await GatewayConnection.shared.authSource()
         self.authSourceLabel = Self.formatAuthSource(authSource, isRemote: isRemote)
     }
 
+    /// 格式化认证源
+    /// - Parameters:
+    ///   - source: 网关认证源
+    ///   - isRemote: 是否为远程模式
+    /// - Returns: 格式化的认证源标签
     private static func formatAuthSource(_ source: GatewayAuthSource?, isRemote: Bool) -> String? {
         guard let source else { return nil }
         switch source {
@@ -328,12 +403,17 @@ final class ControlChannel {
         }
     }
 
+    /// 发送系统事件
+    /// - Parameters:
+    ///   - text: 事件文本
+    ///   - params: 事件参数，默认为空
     func sendSystemEvent(_ text: String, params: [String: AnyHashable] = [:]) async throws {
         var merged = params
         merged["text"] = AnyHashable(text)
         _ = try await self.request(method: "system-event", params: merged)
     }
 
+    /// 启动事件流
     private func startEventStream() {
         self.eventTask?.cancel()
         self.eventTask = Task { [weak self] in
@@ -348,6 +428,8 @@ final class ControlChannel {
         }
     }
 
+    /// 处理推送事件
+    /// - Parameter push: 网关推送事件
     private func handle(push: GatewayPush) {
         switch push {
         case let .event(evt) where evt.event == "agent":
@@ -373,9 +455,11 @@ final class ControlChannel {
         }
     }
 
+    /// 路由工作活动
+    /// - Parameter event: 控制代理事件
     private func routeWorkActivity(from event: ControlAgentEvent) {
-        // We currently treat VoiceWake as the "main" session for UI purposes.
-        // In the future, the gateway can include a sessionKey to distinguish runs.
+        // 我们目前将VoiceWake视为UI目的的"主"会话
+        // 将来，网关可以包含sessionKey来区分运行
         let sessionKey = (event.data["sessionKey"]?.value as? String) ?? "main"
 
         switch event.stream.lowercased() {
@@ -399,6 +483,9 @@ final class ControlChannel {
         }
     }
 
+    /// 桥接到协议参数
+    /// - Parameter value: MoltbotProtocol.AnyCodable值
+    /// - Returns: 协议参数字典
     private static func bridgeToProtocolArgs(
         _ value: MoltbotProtocol.AnyCodable?) -> [String: MoltbotProtocol.AnyCodable]?
     {
@@ -421,7 +508,10 @@ final class ControlChannel {
     }
 }
 
+/// 通知名称扩展
 extension Notification.Name {
+    /// 控制心跳通知
     static let controlHeartbeat = Notification.Name("moltbot.control.heartbeat")
+    /// 控制代理事件通知
     static let controlAgentEvent = Notification.Name("moltbot.control.agent")
 }

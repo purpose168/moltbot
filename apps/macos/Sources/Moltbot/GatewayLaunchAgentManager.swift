@@ -1,5 +1,7 @@
 import Foundation
 
+/// 网关启动代理管理器
+/// 管理网关守护进程的启动代理
 enum GatewayLaunchAgentManager {
     private static let logger = Logger(subsystem: "bot.molt", category: "gateway.launchd")
     private static let disableLaunchAgentMarker = ".clawdbot/disable-launchagent"
@@ -14,10 +16,14 @@ enum GatewayLaunchAgentManager {
             .appendingPathComponent("Library/LaunchAgents/\(gatewayLaunchdLabel).plist")
     }
 
+    /// 检查启动代理写入是否被禁用
     static func isLaunchAgentWriteDisabled() -> Bool {
         FileManager().fileExists(atPath: self.disableLaunchAgentMarkerURL.path)
     }
 
+    /// 设置启动代理写入禁用状态
+    /// - Parameter disabled: 是否禁用
+    /// - Returns: 错误消息(如果有)
     static func setLaunchAgentWriteDisabled(_ disabled: Bool) -> String? {
         let marker = self.disableLaunchAgentMarkerURL
         if disabled {
@@ -44,11 +50,18 @@ enum GatewayLaunchAgentManager {
         return nil
     }
 
+    /// 检查是否已加载
     static func isLoaded() async -> Bool {
         guard let loaded = await self.readDaemonLoaded() else { return false }
         return loaded
     }
 
+    /// 设置启用状态
+    /// - Parameters:
+    ///   - enabled: 是否启用
+    ///   - bundlePath: 应用程序包路径
+    ///   - port: 端口号
+    /// - Returns: 错误消息(如果有)
     static func set(enabled: Bool, bundlePath: String, port: Int) async -> String? {
         _ = bundlePath
         guard !CommandResolver.connectionModeIsRemote() else {
@@ -76,14 +89,17 @@ enum GatewayLaunchAgentManager {
         return await self.runDaemonCommand(["uninstall"])
     }
 
+    /// 重启
     static func kickstart() async {
         _ = await self.runDaemonCommand(["restart"], timeout: 20)
     }
 
+    /// 获取launchd配置快照
     static func launchdConfigSnapshot() -> LaunchAgentPlistSnapshot? {
         LaunchAgentPlist.snapshot(url: self.plistURL)
     }
 
+    /// 获取launchd网关日志路径
     static func launchdGatewayLogPath() -> String {
         let snapshot = self.launchdConfigSnapshot()
         if let stdout = snapshot?.stdoutPath?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -101,6 +117,7 @@ enum GatewayLaunchAgentManager {
 }
 
 extension GatewayLaunchAgentManager {
+    /// 读取守护进程加载状态
     private static func readDaemonLoaded() async -> Bool? {
         let result = await self.runDaemonCommandResult(
             ["status", "--json", "--no-probe"],
@@ -117,17 +134,20 @@ extension GatewayLaunchAgentManager {
         return loaded
     }
 
+    /// 命令结果
     private struct CommandResult {
         let success: Bool
         let payload: Data?
         let message: String?
     }
 
+    /// 解析的守护进程JSON
     private struct ParsedDaemonJson {
         let text: String
         let object: [String: Any]
     }
 
+    /// 运行守护进程命令
     private static func runDaemonCommand(
         _ args: [String],
         timeout: Double = 15,
@@ -138,6 +158,7 @@ extension GatewayLaunchAgentManager {
         return result.message ?? "Gateway daemon command failed"
     }
 
+    /// 运行守护进程命令并获取结果
     private static func runDaemonCommandResult(
         _ args: [String],
         timeout: Double,
@@ -146,7 +167,7 @@ extension GatewayLaunchAgentManager {
         let command = CommandResolver.moltbotCommand(
             subcommand: "gateway",
             extraArgs: self.withJsonFlag(args),
-            // Launchd management must always run locally, even if remote mode is configured.
+            // Launchd管理必须始终在本地运行,即使配置了远程模式
             configRoot: ["gateway": ["mode": "local"]])
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = CommandResolver.preferredPaths().joined(separator: ":")
@@ -173,11 +194,13 @@ extension GatewayLaunchAgentManager {
         return CommandResult(success: false, payload: payload, message: detail)
     }
 
+    /// 添加JSON标志
     private static func withJsonFlag(_ args: [String]) -> [String] {
         if args.contains("--json") { return args }
         return args + ["--json"]
     }
 
+    /// 解析守护进程JSON
     private static func parseDaemonJson(from raw: String) -> ParsedDaemonJson? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let start = trimmed.firstIndex(of: "{"),
@@ -191,6 +214,7 @@ extension GatewayLaunchAgentManager {
         return ParsedDaemonJson(text: jsonText, object: object)
     }
 
+    /// 摘要文本
     private static func summarize(_ text: String) -> String? {
         let lines = text
             .split(whereSeparator: \.isNewline)

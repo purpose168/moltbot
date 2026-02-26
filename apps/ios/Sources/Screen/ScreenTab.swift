@@ -21,5 +21,5 @@ struct ScreenTab: View {
         }
     }
 
-    // Navigation is agent-driven; no local URL bar here.
+    // 导航由代理驱动；这里没有本地 URL 栏。
 }

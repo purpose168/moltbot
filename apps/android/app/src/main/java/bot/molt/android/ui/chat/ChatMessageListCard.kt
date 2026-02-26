@@ -103,7 +103,7 @@ private fun EmptyChatHint(modifier: Modifier = Modifier) {
       tint = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Text(
-      text = "Message Clawd…",
+      text = "发送消息给Clawd…",
       style = MaterialTheme.typography.bodyMedium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

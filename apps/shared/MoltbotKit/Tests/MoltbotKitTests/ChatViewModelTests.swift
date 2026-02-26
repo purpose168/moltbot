@@ -3,11 +3,18 @@ import Foundation
 import Testing
 @testable import MoltbotChatUI
 
+/// 超时错误，用于测试中的等待条件
 private struct TimeoutError: Error, CustomStringConvertible {
     let label: String
-    var description: String { "Timeout waiting for: \(self.label)" }
+    var description: String { "等待超时: \(self.label)" }
 }
 
+/// 等待条件满足的辅助函数
+/// - Parameters:
+///   - label: 等待条件的描述标签
+///   - timeoutSeconds: 超时时间（秒），默认2.0
+///   - pollMs: 轮询间隔（毫秒），默认10
+///   - condition: 等待的条件闭包
 private func waitUntil(
     _ label: String,
     timeoutSeconds: Double = 2.0,
@@ -24,21 +31,27 @@ private func waitUntil(
     throw TimeoutError(label: label)
 }
 
+/// 测试聊天传输状态的actor
 private actor TestChatTransportState {
-    var historyCallCount: Int = 0
-    var sessionsCallCount: Int = 0
-    var sentRunIds: [String] = []
-    var abortedRunIds: [String] = []
+    var historyCallCount: Int = 0        // 请求历史的调用次数
+    var sessionsCallCount: Int = 0       // 请求会话列表的调用次数
+    var sentRunIds: [String] = []        // 已发送的运行ID
+    var abortedRunIds: [String] = []     // 已中止的运行ID
 }
 
+/// 测试用的聊天传输实现
 private final class TestChatTransport: @unchecked Sendable, MoltbotChatTransport {
     private let state = TestChatTransportState()
-    private let historyResponses: [MoltbotChatHistoryPayload]
-    private let sessionsResponses: [MoltbotChatSessionsListResponse]
+    private let historyResponses: [MoltbotChatHistoryPayload]     // 预定义的历史响应
+    private let sessionsResponses: [MoltbotChatSessionsListResponse] // 预定义的会话列表响应
 
     private let stream: AsyncStream<MoltbotChatTransportEvent>
     private let continuation: AsyncStream<MoltbotChatTransportEvent>.Continuation
 
+    /// 初始化测试传输
+    /// - Parameters:
+    ///   - historyResponses: 历史响应数组
+    ///   - sessionsResponses: 会话列表响应数组
     init(
         historyResponses: [MoltbotChatHistoryPayload],
         sessionsResponses: [MoltbotChatSessionsListResponse] = [])
@@ -52,12 +65,15 @@ private final class TestChatTransport: @unchecked Sendable, MoltbotChatTransport
         self.continuation = cont
     }
 
+    /// 获取事件流
     func events() -> AsyncStream<MoltbotChatTransportEvent> {
         self.stream
     }
 
+    /// 设置活动会话密钥
     func setActiveSessionKey(_: String) async throws {}
 
+    /// 请求历史记录
     func requestHistory(sessionKey: String) async throws -> MoltbotChatHistoryPayload {
         let idx = await self.state.historyCallCount
         await self.state.setHistoryCallCount(idx + 1)
@@ -71,6 +87,7 @@ private final class TestChatTransport: @unchecked Sendable, MoltbotChatTransport
             thinkingLevel: "off")
     }
 
+    /// 发送消息
     func sendMessage(
         sessionKey _: String,
         message _: String,
@@ -82,10 +99,12 @@ private final class TestChatTransport: @unchecked Sendable, MoltbotChatTransport
         return MoltbotChatSendResponse(runId: idempotencyKey, status: "ok")
     }
 
+    /// 中止运行
     func abortRun(sessionKey _: String, runId: String) async throws {
         await self.state.abortedRunIdsAppend(runId)
     }
 
+    /// 列出会话
     func listSessions(limit _: Int?) async throws -> MoltbotChatSessionsListResponse {
         let idx = await self.state.sessionsCallCount
         await self.state.setSessionsCallCount(idx + 1)
@@ -100,43 +119,50 @@ private final class TestChatTransport: @unchecked Sendable, MoltbotChatTransport
             sessions: [])
     }
 
+    /// 请求健康状态
     func requestHealth(timeoutMs _: Int) async throws -> Bool {
         true
     }
 
+    /// 发送事件
     func emit(_ evt: MoltbotChatTransportEvent) {
         self.continuation.yield(evt)
     }
 
+    /// 获取最后发送的运行ID
     func lastSentRunId() async -> String? {
         let ids = await self.state.sentRunIds
         return ids.last
     }
 
+    /// 获取已中止的运行ID列表
     func abortedRunIds() async -> [String] {
         await self.state.abortedRunIds
     }
 }
 
-extension TestChatTransportState {
-    fileprivate func setHistoryCallCount(_ v: Int) {
+/// TestChatTransportState的扩展方法
+fileprivate extension TestChatTransportState {
+    func setHistoryCallCount(_ v: Int) {
         self.historyCallCount = v
     }
 
-    fileprivate func setSessionsCallCount(_ v: Int) {
+    func setSessionsCallCount(_ v: Int) {
         self.sessionsCallCount = v
     }
 
-    fileprivate func sentRunIdsAppend(_ v: String) {
+    func sentRunIdsAppend(_ v: String) {
         self.sentRunIds.append(v)
     }
 
-    fileprivate func abortedRunIdsAppend(_ v: String) {
+    func abortedRunIdsAppend(_ v: String) {
         self.abortedRunIds.append(v)
     }
 }
 
+/// 聊天视图模型测试套件
 @Suite struct ChatViewModelTests {
+    /// 测试助手消息流式传输和最终清除
     @Test func streamsAssistantAndClearsOnFinal() async throws {
         let sessionId = "sess-main"
         let history1 = MoltbotChatHistoryPayload(
@@ -160,13 +186,13 @@ extension TestChatTransportState {
         let vm = await MainActor.run { MoltbotChatViewModel(sessionKey: "main", transport: transport) }
 
         await MainActor.run { vm.load() }
-        try await waitUntil("bootstrap") { await MainActor.run { vm.healthOK && vm.sessionId == sessionId } }
+        try await waitUntil("初始化完成") { await MainActor.run { vm.healthOK && vm.sessionId == sessionId } }
 
         await MainActor.run {
             vm.input = "hi"
             vm.send()
         }
-        try await waitUntil("pending run starts") { await MainActor.run { vm.pendingRunCount == 1 } }
+        try await waitUntil("待处理运行开始") { await MainActor.run { vm.pendingRunCount == 1 } }
 
         transport.emit(
             .agent(
@@ -177,7 +203,7 @@ extension TestChatTransportState {
                     ts: Int(Date().timeIntervalSince1970 * 1000),
                     data: ["text": AnyCodable("streaming…")])))
 
-        try await waitUntil("assistant stream visible") {
+        try await waitUntil("助手消息流可见") { 
             await MainActor.run { vm.streamingAssistantText == "streaming…" }
         }
 
@@ -195,7 +221,7 @@ extension TestChatTransportState {
                         "args": AnyCodable(["x": 1]),
                     ])))
 
-        try await waitUntil("tool call pending") { await MainActor.run { vm.pendingToolCalls.count == 1 } }
+        try await waitUntil("工具调用待处理") { await MainActor.run { vm.pendingToolCalls.count == 1 } }
 
         let runId = try #require(await transport.lastSentRunId())
         transport.emit(
@@ -207,14 +233,15 @@ extension TestChatTransportState {
                     message: nil,
                     errorMessage: nil)))
 
-        try await waitUntil("pending run clears") { await MainActor.run { vm.pendingRunCount == 0 } }
-        try await waitUntil("history refresh") {
+        try await waitUntil("待处理运行清除") { await MainActor.run { vm.pendingRunCount == 0 } }
+        try await waitUntil("历史记录刷新") { 
             await MainActor.run { vm.messages.contains(where: { $0.role == "assistant" }) }
         }
         #expect(await MainActor.run { vm.streamingAssistantText } == nil)
         #expect(await MainActor.run { vm.pendingToolCalls.isEmpty })
     }
 
+    /// 测试外部最终事件清除流式传输
     @Test func clearsStreamingOnExternalFinalEvent() async throws {
         let sessionId = "sess-main"
         let history = MoltbotChatHistoryPayload(
@@ -226,7 +253,7 @@ extension TestChatTransportState {
         let vm = await MainActor.run { MoltbotChatViewModel(sessionKey: "main", transport: transport) }
 
         await MainActor.run { vm.load() }
-        try await waitUntil("bootstrap") { await MainActor.run { vm.healthOK && vm.sessionId == sessionId } }
+        try await waitUntil("初始化完成") { await MainActor.run { vm.healthOK && vm.sessionId == sessionId } }
 
         transport.emit(
             .agent(
@@ -251,10 +278,10 @@ extension TestChatTransportState {
                         "args": AnyCodable(["x": 1]),
                     ])))
 
-        try await waitUntil("streaming active") {
+        try await waitUntil("流式传输激活") { 
             await MainActor.run { vm.streamingAssistantText == "external stream" }
         }
-        try await waitUntil("tool call pending") { await MainActor.run { vm.pendingToolCalls.count == 1 } }
+        try await waitUntil("工具调用待处理") { await MainActor.run { vm.pendingToolCalls.count == 1 } }
 
         transport.emit(
             .chat(
@@ -265,15 +292,16 @@ extension TestChatTransportState {
                     message: nil,
                     errorMessage: nil)))
 
-        try await waitUntil("streaming cleared") { await MainActor.run { vm.streamingAssistantText == nil } }
+        try await waitUntil("流式传输清除") { await MainActor.run { vm.streamingAssistantText == nil } }
         #expect(await MainActor.run { vm.pendingToolCalls.isEmpty })
     }
 
+    /// 测试会话选择优先主会话和最近会话
     @Test func sessionChoicesPreferMainAndRecent() async throws {
         let now = Date().timeIntervalSince1970 * 1000
-        let recent = now - (2 * 60 * 60 * 1000)
-        let recentOlder = now - (5 * 60 * 60 * 1000)
-        let stale = now - (26 * 60 * 60 * 1000)
+        let recent = now - (2 * 60 * 60 * 1000)      // 2小时前
+        let recentOlder = now - (5 * 60 * 60 * 1000) // 5小时前
+        let stale = now - (26 * 60 * 60 * 1000)      // 26小时前
         let history = MoltbotChatHistoryPayload(
             sessionKey: "main",
             sessionId: "sess-main",
@@ -368,15 +396,16 @@ extension TestChatTransportState {
             sessionsResponses: [sessions])
         let vm = await MainActor.run { MoltbotChatViewModel(sessionKey: "main", transport: transport) }
         await MainActor.run { vm.load() }
-        try await waitUntil("sessions loaded") { await MainActor.run { !vm.sessions.isEmpty } }
+        try await waitUntil("会话加载完成") { await MainActor.run { !vm.sessions.isEmpty } }
 
         let keys = await MainActor.run { vm.sessionChoices.map(\.key) }
         #expect(keys == ["main", "recent-1", "recent-2"])
     }
 
+    /// 测试会话选择在缺失时包含当前会话
     @Test func sessionChoicesIncludeCurrentWhenMissing() async throws {
         let now = Date().timeIntervalSince1970 * 1000
-        let recent = now - (30 * 60 * 1000)
+        let recent = now - (30 * 60 * 1000)  // 30分钟前
         let history = MoltbotChatHistoryPayload(
             sessionKey: "custom",
             sessionId: "sess-custom",
@@ -414,12 +443,13 @@ extension TestChatTransportState {
             sessionsResponses: [sessions])
         let vm = await MainActor.run { MoltbotChatViewModel(sessionKey: "custom", transport: transport) }
         await MainActor.run { vm.load() }
-        try await waitUntil("sessions loaded") { await MainActor.run { !vm.sessions.isEmpty } }
+        try await waitUntil("会话加载完成") { await MainActor.run { !vm.sessions.isEmpty } }
 
         let keys = await MainActor.run { vm.sessionChoices.map(\.key) }
         #expect(keys == ["main", "custom"])
     }
 
+    /// 测试外部错误事件清除流式传输
     @Test func clearsStreamingOnExternalErrorEvent() async throws {
         let sessionId = "sess-main"
         let history = MoltbotChatHistoryPayload(
@@ -431,7 +461,7 @@ extension TestChatTransportState {
         let vm = await MainActor.run { MoltbotChatViewModel(sessionKey: "main", transport: transport) }
 
         await MainActor.run { vm.load() }
-        try await waitUntil("bootstrap") { await MainActor.run { vm.healthOK && vm.sessionId == sessionId } }
+        try await waitUntil("初始化完成") { await MainActor.run { vm.healthOK && vm.sessionId == sessionId } }
 
         transport.emit(
             .agent(
@@ -442,7 +472,7 @@ extension TestChatTransportState {
                     ts: Int(Date().timeIntervalSince1970 * 1000),
                     data: ["text": AnyCodable("external stream")])))
 
-        try await waitUntil("streaming active") {
+        try await waitUntil("流式传输激活") { 
             await MainActor.run { vm.streamingAssistantText == "external stream" }
         }
 
@@ -455,9 +485,10 @@ extension TestChatTransportState {
                     message: nil,
                     errorMessage: "boom")))
 
-        try await waitUntil("streaming cleared") { await MainActor.run { vm.streamingAssistantText == nil } }
+        try await waitUntil("流式传输清除") { await MainActor.run { vm.streamingAssistantText == nil } }
     }
 
+    /// 测试中止请求在收到中止事件前不会清除待处理状态
     @Test func abortRequestsDoNotClearPendingUntilAbortedEvent() async throws {
         let sessionId = "sess-main"
         let history = MoltbotChatHistoryPayload(
@@ -469,23 +500,23 @@ extension TestChatTransportState {
         let vm = await MainActor.run { MoltbotChatViewModel(sessionKey: "main", transport: transport) }
 
         await MainActor.run { vm.load() }
-        try await waitUntil("bootstrap") { await MainActor.run { vm.healthOK && vm.sessionId == sessionId } }
+        try await waitUntil("初始化完成") { await MainActor.run { vm.healthOK && vm.sessionId == sessionId } }
 
         await MainActor.run {
             vm.input = "hi"
             vm.send()
         }
-        try await waitUntil("pending run starts") { await MainActor.run { vm.pendingRunCount == 1 } }
+        try await waitUntil("待处理运行开始") { await MainActor.run { vm.pendingRunCount == 1 } }
 
         let runId = try #require(await transport.lastSentRunId())
         await MainActor.run { vm.abort() }
 
-        try await waitUntil("abortRun called") {
+        try await waitUntil("abortRun被调用") { 
             let ids = await transport.abortedRunIds()
             return ids == [runId]
         }
 
-        // Pending remains until the gateway broadcasts an aborted/final chat event.
+        // 待处理状态会保持，直到网关广播中止/最终聊天事件
         #expect(await MainActor.run { vm.pendingRunCount } == 1)
 
         transport.emit(
@@ -497,6 +528,6 @@ extension TestChatTransportState {
                     message: nil,
                     errorMessage: nil)))
 
-        try await waitUntil("pending run clears") { await MainActor.run { vm.pendingRunCount == 0 } }
+        try await waitUntil("待处理运行清除") { await MainActor.run { vm.pendingRunCount == 0 } }
     }
 }

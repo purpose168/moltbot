@@ -95,7 +95,7 @@ dependencies {
 
   debugImplementation("androidx.compose.ui:ui-tooling")
 
-  // Material Components (XML theme + resources)
+  // Material Components (XML主题 + 资源)
   implementation("com.google.android.material:material:1.13.0")
 
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
@@ -105,14 +105,14 @@ dependencies {
   implementation("androidx.exifinterface:exifinterface:1.4.2")
   implementation("com.squareup.okhttp3:okhttp:5.3.2")
 
-  // CameraX (for node.invoke camera.* parity)
+  // CameraX (用于 node.invoke camera.* 兼容性)
   implementation("androidx.camera:camera-core:1.5.2")
   implementation("androidx.camera:camera-camera2:1.5.2")
   implementation("androidx.camera:camera-lifecycle:1.5.2")
   implementation("androidx.camera:camera-video:1.5.2")
   implementation("androidx.camera:camera-view:1.5.2")
 
-  // Unicast DNS-SD (Wide-Area Bonjour) for tailnet discovery domains.
+  // Unicast DNS-SD (广域 Bonjour) 用于 tailnet 发现域名。
   implementation("dnsjava:dnsjava:3.6.4")
 
   testImplementation("junit:junit:4.13.2")

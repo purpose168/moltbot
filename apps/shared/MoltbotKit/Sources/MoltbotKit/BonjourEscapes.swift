@@ -1,8 +1,8 @@
 import Foundation
 
 public enum BonjourEscapes {
-    /// mDNS / DNS-SD commonly escapes bytes in instance names as `\DDD` (decimal-encoded),
-    /// e.g. spaces are `\032`.
+    /// mDNS / DNS-SD 通常会将实例名称中的字节转义为 `\DDD`（十进制编码），
+    /// 例如空格会被编码为 `\032`。
     public static func decode(_ input: String) -> String {
         var out = ""
         var i = input.startIndex

@@ -20,11 +20,11 @@ struct NotificationManager {
         if status.authorizationStatus == .notDetermined {
             let granted = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
             if granted != true {
-                self.logger.warning("notification permission denied (request)")
+                self.logger.warning("通知权限被拒绝（请求）")
                 return false
             }
         } else if status.authorizationStatus != .authorized {
-            self.logger.warning("notification permission denied status=\(status.authorizationStatus.rawValue)")
+            self.logger.warning("通知权限被拒绝 状态=\(status.authorizationStatus.rawValue)")
             return false
         }
 
@@ -47,7 +47,7 @@ struct NotificationManager {
                     content.interruptionLevel = .timeSensitive
                 } else {
                     self.logger.debug(
-                        "time-sensitive notification requested without entitlement; falling back to active")
+                        "请求了时间敏感通知但无权限；回退到活动")
                     content.interruptionLevel = .active
                 }
             }
@@ -56,10 +56,10 @@ struct NotificationManager {
         let req = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
         do {
             try await center.add(req)
-            self.logger.debug("notification queued")
+            self.logger.debug("通知已排队")
             return true
         } catch {
-            self.logger.error("notification send failed: \(error.localizedDescription)")
+            self.logger.error("通知发送失败：\(error.localizedDescription)")
             return false
         }
     }

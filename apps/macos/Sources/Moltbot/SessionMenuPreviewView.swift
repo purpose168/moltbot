@@ -4,12 +4,14 @@ import MoltbotProtocol
 import OSLog
 import SwiftUI
 
+/// 会话预览项
 struct SessionPreviewItem: Identifiable, Sendable {
     let id: String
     let role: PreviewRole
     let text: String
 }
 
+/// 预览角色
 enum PreviewRole: String, Sendable {
     case user
     case assistant
@@ -17,17 +19,19 @@ enum PreviewRole: String, Sendable {
     case system
     case other
 
+    /// 标签
     var label: String {
         switch self {
-        case .user: "User"
-        case .assistant: "Agent"
-        case .tool: "Tool"
-        case .system: "System"
-        case .other: "Other"
+        case .user: "用户"
+        case .assistant: "代理"
+        case .tool: "工具"
+        case .system: "系统"
+        case .other: "其他"
         }
     }
 }
 
+/// 会话预览缓存
 actor SessionPreviewCache {
     static let shared = SessionPreviewCache()
 
@@ -38,21 +42,25 @@ actor SessionPreviewCache {
 
     private var entries: [String: CacheEntry] = [:]
 
+    /// 获取缓存的快照
     func cachedSnapshot(for sessionKey: String, maxAge: TimeInterval) -> SessionMenuPreviewSnapshot? {
         guard let entry = self.entries[sessionKey] else { return nil }
         guard Date().timeIntervalSince(entry.updatedAt) < maxAge else { return nil }
         return entry.snapshot
     }
 
+    /// 存储快照
     func store(snapshot: SessionMenuPreviewSnapshot, for sessionKey: String) {
         self.entries[sessionKey] = CacheEntry(snapshot: snapshot, updatedAt: Date())
     }
 
+    /// 获取最后的快照
     func lastSnapshot(for sessionKey: String) -> SessionMenuPreviewSnapshot? {
         self.entries[sessionKey]?.snapshot
     }
 }
 
+/// 会话预览限制器
 actor SessionPreviewLimiter {
     static let shared = SessionPreviewLimiter(maxConcurrent: 2)
 
@@ -67,6 +75,7 @@ actor SessionPreviewLimiter {
         self.available = normalized
     }
 
+    /// 使用许可执行操作
     func withPermit<T>(_ operation: () async throws -> T) async throws -> T {
         await self.acquire()
         defer { self.release() }
@@ -74,6 +83,7 @@ actor SessionPreviewLimiter {
         return try await operation()
     }
 
+    /// 获取许可
     private func acquire() async {
         if self.available > 0 {
             self.available -= 1
@@ -86,6 +96,7 @@ actor SessionPreviewLimiter {
         }
     }
 
+    /// 释放许可
     private func release() {
         if let id = self.waitQueue.first {
             self.waitQueue.removeFirst()
@@ -100,6 +111,7 @@ actor SessionPreviewLimiter {
 
 #if DEBUG
 extension SessionPreviewCache {
+    /// 测试方法:设置快照
     func _testSet(
         snapshot: SessionMenuPreviewSnapshot,
         for sessionKey: String,
@@ -108,17 +120,20 @@ extension SessionPreviewCache {
         self.entries[sessionKey] = CacheEntry(snapshot: snapshot, updatedAt: updatedAt)
     }
 
+    /// 测试方法:重置缓存
     func _testReset() {
         self.entries = [:]
     }
 }
 #endif
 
+/// 会话菜单预览快照
 struct SessionMenuPreviewSnapshot: Sendable {
     let items: [SessionPreviewItem]
     let status: SessionMenuPreviewView.LoadStatus
 }
 
+/// 会话菜单预览视图
 struct SessionMenuPreviewView: View {
     let width: CGFloat
     let maxLines: Int
@@ -128,6 +143,7 @@ struct SessionMenuPreviewView: View {
 
     @Environment(\.menuItemHighlighted) private var isHighlighted
 
+    /// 加载状态
     enum LoadStatus: Equatable {
         case loading
         case ready
@@ -135,6 +151,7 @@ struct SessionMenuPreviewView: View {
         case error(String)
     }
 
+    /// 主色调
     private var primaryColor: Color {
         if self.isHighlighted {
             return Color(nsColor: .selectedMenuItemTextColor)
@@ -142,6 +159,7 @@ struct SessionMenuPreviewView: View {
         return Color(nsColor: .labelColor)
     }
 
+    /// 次要色调
     private var secondaryColor: Color {
         if self.isHighlighted {
             return Color(nsColor: .selectedMenuItemTextColor).opacity(0.85)
@@ -160,14 +178,14 @@ struct SessionMenuPreviewView: View {
 
             switch self.status {
             case .loading:
-                self.placeholder("Loading preview…")
+                self.placeholder("正在加载预览…")
             case .empty:
-                self.placeholder("No recent messages")
+                self.placeholder("没有最近的消息")
             case let .error(message):
                 self.placeholder(message)
             case .ready:
                 if self.items.isEmpty {
-                    self.placeholder("No recent messages")
+                    self.placeholder("没有最近的消息")
                 } else {
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(self.items) { item in
@@ -183,6 +201,7 @@ struct SessionMenuPreviewView: View {
         .frame(width: max(1, self.width), alignment: .leading)
     }
 
+    /// 预览行
     @ViewBuilder
     private func previewRow(_ item: SessionPreviewItem) -> some View {
         HStack(alignment: .top, spacing: 4) {
@@ -201,6 +220,7 @@ struct SessionMenuPreviewView: View {
         }
     }
 
+    /// 角色颜色
     private func roleColor(_ role: PreviewRole) -> Color {
         if self.isHighlighted { return Color(nsColor: .selectedMenuItemTextColor).opacity(0.9) }
         switch role {
@@ -212,6 +232,7 @@ struct SessionMenuPreviewView: View {
         }
     }
 
+    /// 占位符
     @ViewBuilder
     private func placeholder(_ text: String) -> some View {
         Text(text)
@@ -220,6 +241,7 @@ struct SessionMenuPreviewView: View {
     }
 }
 
+/// 会话菜单预览加载器
 enum SessionMenuPreviewLoader {
     private static let logger = Logger(subsystem: "bot.molt", category: "SessionPreview")
     private static let previewTimeoutSeconds: Double = 4
@@ -227,9 +249,10 @@ enum SessionMenuPreviewLoader {
     private static let previewMaxChars = 240
 
     private struct PreviewTimeoutError: LocalizedError {
-        var errorDescription: String? { "preview timeout" }
+        var errorDescription: String? { "预览超时" }
     }
 
+    /// 预热会话
     static func prewarm(sessionKeys: [String], maxItems: Int) async {
         let keys = self.uniqueKeys(sessionKeys)
         guard !keys.isEmpty else { return }
@@ -245,6 +268,7 @@ enum SessionMenuPreviewLoader {
         }
     }
 
+    /// 加载会话
     static func load(sessionKey: String, maxItems: Int) async -> SessionMenuPreviewSnapshot {
         if let cached = await SessionPreviewCache.shared.cachedSnapshot(
             for: sessionKey,
@@ -267,17 +291,18 @@ enum SessionMenuPreviewLoader {
             Self.logger.warning(
                 "Session preview failed session=\(sessionKey, privacy: .public) " +
                     "error=\(errorDescription, privacy: .public)")
-            return SessionMenuPreviewSnapshot(items: [], status: .error("Preview unavailable"))
+            return SessionMenuPreviewSnapshot(items: [], status: .error("预览不可用"))
         }
     }
 
+    /// 获取快照
     private static func fetchSnapshot(sessionKey: String, maxItems: Int) async throws -> SessionMenuPreviewSnapshot {
         do {
             let payload = try await self.requestPreview(keys: [sessionKey], maxItems: maxItems)
             if let entry = payload.previews.first(where: { $0.key == sessionKey }) ?? payload.previews.first {
                 return self.snapshot(from: entry, maxItems: maxItems)
             }
-            return SessionMenuPreviewSnapshot(items: [], status: .error("Preview unavailable"))
+            return SessionMenuPreviewSnapshot(items: [], status: .error("预览不可用"))
         } catch {
             if self.isUnknownMethodError(error) {
                 return try await self.fetchHistorySnapshot(sessionKey: sessionKey, maxItems: maxItems)
@@ -286,6 +311,7 @@ enum SessionMenuPreviewLoader {
         }
     }
 
+    /// 请求预览
     private static func requestPreview(
         keys: [String],
         maxItems: Int) async throws -> MoltbotSessionsPreviewPayload
@@ -306,6 +332,7 @@ enum SessionMenuPreviewLoader {
         }
     }
 
+    /// 获取历史快照
     private static func fetchHistorySnapshot(
         sessionKey: String,
         maxItems: Int) async throws -> SessionMenuPreviewSnapshot
@@ -326,10 +353,12 @@ enum SessionMenuPreviewLoader {
         return Self.snapshot(from: built)
     }
 
+    /// 从项目创建快照
     private static func snapshot(from items: [SessionPreviewItem]) -> SessionMenuPreviewSnapshot {
         SessionMenuPreviewSnapshot(items: items, status: items.isEmpty ? .empty : .ready)
     }
 
+    /// 从条目创建快照
     private static func snapshot(
         from entry: MoltbotSessionPreviewEntry,
         maxItems: Int) -> SessionMenuPreviewSnapshot
@@ -342,12 +371,13 @@ enum SessionMenuPreviewLoader {
         case "empty":
             return SessionMenuPreviewSnapshot(items: items, status: .empty)
         case "missing":
-            return SessionMenuPreviewSnapshot(items: items, status: .error("Session missing"))
+            return SessionMenuPreviewSnapshot(items: items, status: .error("会话不存在"))
         default:
-            return SessionMenuPreviewSnapshot(items: items, status: .error("Preview unavailable"))
+            return SessionMenuPreviewSnapshot(items: items, status: .error("预览不可用"))
         }
     }
 
+    /// 缓存负载
     private static func cache(payload: MoltbotSessionsPreviewPayload, maxItems: Int) async {
         for entry in payload.previews {
             let snapshot = self.snapshot(from: entry, maxItems: maxItems)
@@ -355,15 +385,18 @@ enum SessionMenuPreviewLoader {
         }
     }
 
+    /// 获取预览限制
     private static func previewLimit(for maxItems: Int) -> Int {
         let boundedItems = self.normalizeMaxItems(maxItems)
         return min(max(boundedItems * 3, 20), 120)
     }
 
+    /// 规范化最大项目数
     private static func normalizeMaxItems(_ maxItems: Int) -> Int {
         max(1, min(maxItems, 50))
     }
 
+    /// 从条目获取预览项目
     private static func previewItems(
         from entry: MoltbotSessionPreviewEntry,
         maxItems: Int) -> [SessionPreviewItem]
@@ -380,6 +413,7 @@ enum SessionMenuPreviewLoader {
         return Array(trimmed.reversed())
     }
 
+    /// 从负载获取预览项目
     private static func previewItems(
         from payload: MoltbotChatHistoryPayload,
         maxItems: Int) -> [SessionPreviewItem]
@@ -399,6 +433,7 @@ enum SessionMenuPreviewLoader {
         return Array(trimmed.reversed())
     }
 
+    /// 解码消息
     private static func decodeMessages(_ raw: [MoltbotKit.AnyCodable]) -> [MoltbotChatMessage] {
         raw.compactMap { item in
             guard let data = try? JSONEncoder().encode(item) else { return nil }
@@ -406,11 +441,13 @@ enum SessionMenuPreviewLoader {
         }
     }
 
+    /// 获取预览角色
     private static func previewRole(_ raw: String, isTool: Bool) -> PreviewRole {
         if isTool { return .tool }
         return self.previewRoleFromRaw(raw)
     }
 
+    /// 从原始字符串获取预览角色
     private static func previewRoleFromRaw(_ raw: String) -> PreviewRole {
         switch raw.lowercased() {
         case "user": .user
@@ -421,6 +458,7 @@ enum SessionMenuPreviewLoader {
         }
     }
 
+    /// 获取预览文本
     private static func previewText(for message: MoltbotChatMessage) -> String? {
         let text = message.content.compactMap(\.text).joined(separator: "\n")
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -430,7 +468,7 @@ enum SessionMenuPreviewLoader {
         if !toolNames.isEmpty {
             let shown = toolNames.prefix(2)
             let overflow = toolNames.count - shown.count
-            var label = "call \(shown.joined(separator: ", "))"
+            var label = "调用 \(shown.joined(separator: ", "))"
             if overflow > 0 { label += " +\(overflow)" }
             return label
         }
@@ -442,11 +480,13 @@ enum SessionMenuPreviewLoader {
         return nil
     }
 
+    /// 是否为工具调用
     private static func isToolCall(_ message: MoltbotChatMessage) -> Bool {
         if message.toolName?.nonEmpty != nil { return true }
         return message.content.contains { $0.name?.nonEmpty != nil || $0.type?.lowercased() == "toolcall" }
     }
 
+    /// 获取工具名称
     private static func toolNames(for message: MoltbotChatMessage) -> [String] {
         var names: [String] = []
         for content in message.content {
@@ -460,6 +500,7 @@ enum SessionMenuPreviewLoader {
         return Self.dedupePreservingOrder(names)
     }
 
+    /// 获取媒体摘要
     private static func mediaSummary(for message: MoltbotChatMessage) -> String? {
         let types = message.content.compactMap { content -> String? in
             let raw = content.type?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -471,6 +512,7 @@ enum SessionMenuPreviewLoader {
         return "[\(first)]"
     }
 
+    /// 去重并保持顺序
     private static func dedupePreservingOrder(_ values: [String]) -> [String] {
         var seen = Set<String>()
         var result: [String] = []
@@ -481,11 +523,13 @@ enum SessionMenuPreviewLoader {
         return result
     }
 
+    /// 获取唯一键
     private static func uniqueKeys(_ keys: [String]) -> [String] {
         let trimmed = keys.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
         return self.dedupePreservingOrder(trimmed.filter { !$0.isEmpty })
     }
 
+    /// 是否为未知方法错误
     private static func isUnknownMethodError(_ error: Error) -> Bool {
         guard let response = error as? GatewayResponseError else { return false }
         guard response.code == ErrorCode.invalidRequest.rawValue else { return false }

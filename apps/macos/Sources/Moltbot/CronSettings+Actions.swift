@@ -1,7 +1,12 @@
 import MoltbotProtocol
 import Foundation
 
+/// CronSettings 操作扩展
+/// 
+/// 包含 CronSettings 的操作相关扩展方法
 extension CronSettings {
+    /// 保存作业
+    /// - Parameter payload: 作业有效载荷
     func save(payload: [String: AnyCodable]) async {
         guard !self.isSaving else { return }
         self.isSaving = true
